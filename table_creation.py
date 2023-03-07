@@ -41,6 +41,18 @@ def table_creation():
                 )
         """)
 
+        cursor.execute("""
+            CREATE TABLE days(
+                telegram_id INTEGER,
+                day TEXT,
+                start_hour TEXT,
+                finish_hour TEXT,
+                extra_hours TEXT,
+                FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+                )
+        """)
+
+
         connection.commit()
         print("Database users successfully created.")
     except sqlite3.OperationalError:

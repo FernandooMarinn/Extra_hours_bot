@@ -32,7 +32,7 @@ def check_o_clock_hours(hour):
     if not hour.isdigit():
         return False
 
-    if 0 < int(hour) < 10:
+    if 0 < int(hour) < 10 and len(hour) == 1:
         return "0{}:00".format(hour)
     elif int(hour) < 24:
         return "{}:00".format(hour)

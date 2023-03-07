@@ -203,13 +203,18 @@ def answer_unknown_texts(message):
 
 
 def finish_check_valid_hour(message):
+    #  Takes a message and check if there is an hour in the inside, and corrects it.
     if Functionalities.check_hour(message.text):
+        #  If it is exactly the format the bot uses (hh:mm)
         bot.send_message(message.chat.id, "It is a correct format.")
 
     elif Functionalities.check_o_clock_hours(message.text) != False:
+        #  If it is an o'clock hour (h) or an hour with minutes of 3 digits (h:mm)
         transformed_hour = Functionalities.check_o_clock_hours(message.text)
         bot.send_message(message.chat.id, "Your hour has been transformed to {}".format(transformed_hour))
+
     else:
+        #  If it is not correct, or is not an hour.
         error_text = Functionalities.wrong_hour_format_text()
         bot.reply_to(message, error_text, parse_mode="html")
 
@@ -218,35 +223,40 @@ def finish_check_valid_hour(message):
 
 
 def ask_starting_hour(message):
+    #  Get user name from message text, and gives a welcome.
     name = message.text
     bot.send_message(message.chat.id, "Welcome {}!".format(name))
     bot.send_message(message.chat.id, "Lets continue with a few questions about your job.")
 
-    #  We are creating an user diccionary inside our global users diccionary.
+    #  It creates an user diccionary inside our global users diccionary.
     users[message.chat.id] = {"name": name}
 
+    #  Sends typing action, and ask start work hour.
     bot.send_chat_action(message.chat.id, "typing")
-
     markup = ForceReply()
     starting_hour = bot.send_message(message.chat.id, "What time do you usually start work? (from 00:00 to 23:59)",
                                      reply_markup=markup)
 
+    #  Continues in ask_finish_hour.
     bot.register_next_step_handler(starting_hour, ask_finishing_hour)
 
 
 def ask_finishing_hour(message):
+    #  Checks if is a known format, and tries to convert it.
     hour = Functionalities.check_o_clock_hours(message.text)
     if not Functionalities.check_hour(hour):
+        #  If it is not a valid hour, send a error message.
         error_text = Functionalities.wrong_hour_format_text()
         bot.reply_to(message, error_text, parse_mode="html")
     else:
         bot.send_chat_action(message.chat.id, "typing")
-
+        #  Saves the hour as start_hour in users variable.
         users[message.chat.id]["start_hour"] = hour
 
         markup = ForceReply()
+        #  Ask at what hour the work finishes.
         finishing_hour = bot.send_message(message.chat.id, "Nice! And when do you finish?", reply_markup=markup)
-
+        #  Continues in final_time_question.
         bot.register_next_step_handler(finishing_hour, final_time_question)
 
 

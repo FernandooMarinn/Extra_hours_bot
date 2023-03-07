@@ -9,9 +9,12 @@ from telebot.types import ReplyKeyboardMarkup, ForceReply
 
 bot = telebot.TeleBot(bot_token)
 
+database.check_and_create_tables()
 
 users = {}
 daily_payment_users = {}
+
+time_typing = 0
 
 
 @bot.message_handler(commands=['start'])
@@ -30,7 +33,25 @@ def create_user(message):
 
 @bot.message_handler(commands=['help'])
 def send_help(message):
-    bot.send_message(message.chat.id, "This will be the help answer.")
+    help_message = """
+Hi! My name is Extra Hours bot. I can help you in many ways!
+
+Use /calculate_daily_payment to see how much you would be paid in one day. I will keep your hourly income
+in my database, so you don´t have to introduce it again every time you use it.
+
+Use /reset_price_per_hour if you want me to delete that hourly income of my database, and I will 
+asks you again your hourly income when you want to calculate another daily payment. I hope you got a rise!
+
+Use /new_user to create a profile in my database. I will ask you your work schedule, and your hourly income.
+I will use it to help you calculate your <b>extra hours!</b>
+
+Use /check_valid_hour to check if I can understand a certain format of hour. (I know, I'm a bit special!)
+
+I'm still under construction, so don't be mad with me if I don´t work correctly!
+
+If you have any questions or want to report a bug, contact my creator on github : <a href="https://github.com/FernandooMarinn">FernandooMarinn</a>
+    """
+    bot.send_message(message.chat.id, help_message, parse_mode="html")
 
 
 @bot.message_handler(commands=['check_valid_hour'])
@@ -49,10 +70,75 @@ def ask_arrival_time(message):
     bot.register_next_step_handler(arrival, ask_leaving_time)
 
 
+def ask_leaving_time(message):
+    o_clock_hour = Functionalities.check_o_clock_hours(message.text)
+    if not o_clock_hour:
+        hour = message.text
+    else:
+        hour = o_clock_hour
+
+    if not Functionalities.check_hour(hour):
+        error_text = Functionalities.wrong_hour_format_text()
+        bot.reply_to(message, error_text, parse_mode="html")
+
+    else:
+        markup = ForceReply()
+
+        try:
+            daily_payment_users[message.chat.id]["arrival_time"] = hour
+        except KeyError:
+            daily_payment_users[message.chat.id] = {}
+            daily_payment_users[message.chat.id]["arrival_time"] = hour
+
+        departure = bot.send_message(message.chat.id, "When do the work finish?", reply_markup=markup)
+
+        bot.register_next_step_handler(departure, ask_price_per_hour)
+
+
+def ask_price_per_hour(message):
+    o_clock_hour = Functionalities.check_o_clock_hours(message.text)
+    if not o_clock_hour:
+        hour = message.text
+    else:
+        hour = o_clock_hour
+
+    if not Functionalities.check_hour(hour):
+        error_text = Functionalities.wrong_hour_format_text()
+        bot.reply_to(message, error_text, parse_mode="html")
+
+    else:
+        daily_payment_users[message.chat.id]["exit_time"] = hour
+        print(message.chat.id)
+        check_database = database.check_and_return_daily_user(message.chat.id)
+
+        if not check_database:
+            markup = ForceReply()
+            payment_per_hour = bot.send_message(message.chat.id, "What is the payment per hour?", reply_markup=markup)
+
+            bot.register_next_step_handler(payment_per_hour, final_price_per_hour)
+        else:
+
+            payment_per_hour = check_database
+            daily_payment_users[message.chat.id]["payment_per_hour"] = payment_per_hour
+            total_payment = Functionalities.calculate_total_day_payment(daily_payment_users[message.chat.id])
+
+            bot.send_message(message.chat.id, "Total payment would be {}€".format(total_payment))
+
+
+def final_price_per_hour(message):
+
+    daily_payment_users[message.chat.id]["payment_per_hour"] = message.text
+
+    total_payment = Functionalities.calculate_total_day_payment(daily_payment_users[message.chat.id])
+
+    database.introduce_daily_user_to_database(message.chat.id, daily_payment_users[message.chat.id])
+
+    bot.send_message(message.chat.id, "Total payment would be {}€".format(total_payment))
+
+
 @bot.message_handler(content_types=['document', 'audio', 'video', 'photo', 'voice'])
 def audio_doc_video(message):
-    print("Esto esta funcionando")
-    print(message)
+
     if message.content_type == 'document':
         bot.reply_to(message, "Uuuhhh, a document. I hope you haven't confused me with your local city council.")
 
@@ -86,82 +172,15 @@ def reset_price_per_hour(message):
         bot.reply_to(message, "You don't have an hourly rate! You can't reset it yet!")
 
 
-@bot.message_handler(func= lambda x: True)
+@bot.message_handler(func=lambda x: True)
 def answer_unknown_texts(message):
     bot.reply_to(message, "I'm sorry! I don't understand you! Please use /help and use my commands.")
-
-
-def ask_leaving_time(message):
-    o_clock_hour = Functionalities.check_o_clock_hours(message.text)
-    if o_clock_hour != False:
-        hour = o_clock_hour
-    else:
-        hour = message.text
-
-    if not Functionalities.check_hour(hour):
-        error_text = Functionalities.wrong_hour_format_text()
-        bot.reply_to(message, error_text, parse_mode="html")
-
-    else:
-        markup = ForceReply()
-
-        try:
-            daily_payment_users[message.chat.id]["arrival_time"] = hour
-        except KeyError:
-            daily_payment_users[message.chat.id] = {}
-            daily_payment_users[message.chat.id]["arrival_time"] = hour
-
-        departure = bot.send_message(message.chat.id, "When do the work finish?", reply_markup=markup)
-
-        bot.register_next_step_handler(departure, ask_price_per_hour)
-
-
-
-def ask_price_per_hour(message):
-    o_clock_hour = Functionalities.check_o_clock_hours(message.text)
-    if o_clock_hour != False:
-        hour = o_clock_hour
-    else:
-        hour = message.text
-    if not Functionalities.check_hour(hour):
-        error_text = Functionalities.wrong_hour_format_text()
-        bot.reply_to(message, error_text, parse_mode="html")
-    else:
-        daily_payment_users[message.chat.id]["exit_time"] = hour
-        print(message.chat.id)
-        check_database = database.check_and_return_daily_user(message.chat.id)
-
-        if check_database != False:
-            payment_per_hour = check_database
-            daily_payment_users[message.chat.id]["payment_per_hour"] = payment_per_hour
-            total_payment = Functionalities.calculate_total_day_payment(daily_payment_users[message.chat.id])
-
-            bot.send_message(message.chat.id, "Total payment would be {}€".format(total_payment))
-        else:
-            markup = ForceReply()
-            payment_per_hour = bot.send_message(message.chat.id, "What is the payment per hour?", reply_markup=markup)
-
-            bot.register_next_step_handler(payment_per_hour, final_price_per_hour)
-
-
-def final_price_per_hour(message):
-
-    daily_payment_users[message.chat.id]["payment_per_hour"] = message.text
-
-    total_payment = Functionalities.calculate_total_day_payment(daily_payment_users[message.chat.id])
-
-    database.introduce_daily_user_to_database(message.chat.id, daily_payment_users[message.chat.id])
-
-    bot.send_message(message.chat.id, "Total payment would be {}€".format(total_payment))
-
-    print(daily_payment_users)
-    print(daily_payment_users[message.chat.id])
-
 
 
 def finish_check_valid_hour(message):
     if Functionalities.check_hour(message.text):
         bot.send_message(message.chat.id, "It is a correct format.")
+
     elif Functionalities.check_o_clock_hours(message.text) != False:
         transformed_hour = Functionalities.check_o_clock_hours(message.text)
         bot.send_message(message.chat.id, "Your hour has been transformed to {}".format(transformed_hour))
@@ -170,6 +189,7 @@ def finish_check_valid_hour(message):
         bot.reply_to(message, error_text, parse_mode="html")
 
 # ----------------------------------------------------------------------
+
 
 def ask_starting_hour(message):
     name = message.text
@@ -180,7 +200,7 @@ def ask_starting_hour(message):
     users[message.chat.id] = {"name": name}
 
     bot.send_chat_action(message.chat.id, "typing")
-    time.sleep(2)
+    time.sleep(time_typing)
 
     markup = ForceReply()
     starting_hour = bot.send_message(message.chat.id, "What time do you usually start work? (from 00:00 to 23:59)",
@@ -190,14 +210,15 @@ def ask_starting_hour(message):
 
 
 def ask_finishing_hour(message):
-    if not Functionalities.check_hour(message.text):
+    hour = Functionalities.check_o_clock_hours(message.text)
+    if not Functionalities.check_hour(hour):
         error_text = Functionalities.wrong_hour_format_text()
         bot.reply_to(message, error_text, parse_mode="html")
     else:
         bot.send_chat_action(message.chat.id, "typing")
-        time.sleep(2)
+        time.sleep(time_typing)
 
-        users[message.chat.id]["start_hour"] = message.text
+        users[message.chat.id]["start_hour"] = hour
 
         markup = ForceReply()
         finishing_hour = bot.send_message(message.chat.id, "Nice! And when do you finish?", reply_markup=markup)
@@ -206,34 +227,101 @@ def ask_finishing_hour(message):
 
 
 def final_time_question(message):
-    if not Functionalities.check_hour(message.text):
+    hour = Functionalities.check_o_clock_hours(message.text)
+    if not Functionalities.check_hour(hour):
         error_text = Functionalities.wrong_hour_format_text()
         bot.reply_to(message, error_text, parse_mode="html")
     else:
 
-        users[message.chat.id]["finish_hour"] = message.text
+        users[message.chat.id]["finish_hour"] = hour
 
-        time.sleep(2)
+        time.sleep(time_typing)
         bot.send_chat_action(message.chat.id, "typing")
 
-        bot.send_message(message.chat.id, "Nice! Now some questions about your working hours.")
+    markup = ForceReply()
+    hourly_income = bot.send_message(message.chat.id, "How much are you paid per hour?", reply_markup=markup)
 
-        print(users[message.chat.id])
-        print(users)
+    bot.register_next_step_handler(hourly_income, ask_money_per_hour)
 
-    bot.register_next_step_handler(message, ask_working_days)
+
+def ask_money_per_hour(message):
+    hourly_income = message.text
+    if not Functionalities.check_if_float_number(hourly_income):
+        bot.send_message(message.chat.id, "You haven't entered a number! Please try again.")
+    else:
+        users[message.chat.id]["payment_per_hour"] = hourly_income
+
+        bot.send_message(message.chat.id, "Good! Now some questions about your work days.")
+
+        work_days = {"Monday": None, "Tuesday": None, "Wednesday": None, "Thursday": None, "Friday": None,
+                     "Saturday": None, "Sunday": None, "number_of_day": 0}
+        users[message.chat.id]["work_days"] = work_days
+
+        ask_working_days(message)
 
 
 def ask_working_days(message):
-    work_days = {"Monday": None, "Tuesday": None, "Wednesday": None, "Thursday": None, "Friday": None,
-                 "Saturday": None, "Sunday": None}
+    current_day = Functionalities.calculate_current_day(users[message.chat.id])
+    bot.send_chat_action(message.chat.id, "typing")
+
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="Press a button.")
+    markup.add("yes", "no")
+
+    answer = bot.send_message(message.chat.id, "Do you work on {}?".format(current_day), reply_markup=markup)
+
+    bot.register_next_step_handler(answer, write_working_day)
 
 
+def write_working_day(message):
+    current_day = Functionalities.calculate_current_day(users[message.chat.id])
+    if message.text.lower() == "yes":
+        users[message.chat.id]["work_days"][current_day] = 1
+    elif message.text.lower() == "no":
+        users[message.chat.id]["work_days"][current_day] = 0
+    else:
+        bot.send_message(message.chat.id, "You have entered a wrong input! Please try again and use the buttons!")
+        del users[message.chat.id]
+        return False
 
-def ask_individual_day(chat_id, key):
-    markup = ForceReply()
-    # ADD BUTTONS!!
-    bot.send_message(chat_id, "Do you work on {}?")
+    if users[message.chat.id]["work_days"]["number_of_day"] < 6:
+        users[message.chat.id]["work_days"]["number_of_day"] += 1
+        ask_working_days(message)
+    else:
+        save(message.chat.id)
+
+
+def save(telegram_id):
+    print(users[telegram_id])
+    check_data_saving = database.introduce_new_user_to_database(telegram_id, users[telegram_id])
+    print(check_data_saving)
+    if check_data_saving == False:
+        database.delete_user(telegram_id)
+        notify_error_creating_user(telegram_id)
+    else:
+        bot.send_message(telegram_id, "Nice {}! You have successfully created your user!"
+                         .format(users[telegram_id]["name"]))
+
+
+def notify_error_creating_user(id):
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="Introduce your preference")
+    markup.add("Keep older user", "Create new one")
+    check = bot.send_message(id, "Ooops, seems like you are already in my database. Do you want to delete "
+                                 "the former user and create a new one?", reply_markup=markup)
+
+    bot.register_next_step_handler(check, delete_or_keep_user)
+
+
+def delete_or_keep_user(message):
+    if message.text.lower() == "keep older user":
+        bot.send_message(message.chat.id, "Perfect! You will keep your current profile.")
+    elif message.text.lower() == "create new one":
+        database.delete_user(message.chat.id)
+        database.introduce_new_user_to_database(message.chat.id, users[message.chat.id])
+        bot.send_message(message.chat.id, "Nice! I just deleted the old user, and introduced the new one.")
+    else:
+        bot.send_message(message.chat.id, "It seems like you introduced a wrong value. I'm sorry, but you have to "
+                                          "start again!")
+
 
 """ to do:
        
@@ -248,6 +336,8 @@ def ask_individual_day(chat_id, key):
         
         La conexion a la base de datos tiene que ser lo más rapida posible, para evitar errores (abrir y cerrar)
         
+        AÑADIR HOURLY_INCOME A USERS
+        
         
         
 """
@@ -255,7 +345,7 @@ def ask_individual_day(chat_id, key):
 
 if __name__ == '__main__':
     bot.set_my_commands([
-        telebot.types.BotCommand("/start", "Give you instructions."),
+        telebot.types.BotCommand("/help", "Show functions to use with the bot."),
         telebot.types.BotCommand("/new_user", "Create a new profile."),
         telebot.types.BotCommand("/check_valid_hour", "Check if an hour format is correct to use it with the bot."),
         telebot.types.BotCommand("/calculate_daily_payment", "For cheking your daily income, depending on hours."),

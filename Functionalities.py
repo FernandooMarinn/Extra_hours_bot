@@ -1,4 +1,7 @@
 def check_hour(hour):
+    if hour == False:
+        return False
+
     if ":" not in hour:
         return False
 
@@ -38,10 +41,20 @@ def check_o_clock_hours(hour):
 
 
 def check_one_cifre_hours(hour):
+    if not ":" in hour:
+        return False
+
     separated_hours = hour.split(":")
+    try:
+        int(separated_hours[0])
+        int(separated_hours[1])
+    except ValueError:
+        return False
     if 0 < int(separated_hours[0]) < 10:
         hours = "0{}".format(format(separated_hours[0]))
     else:
+        return False
+    if not 0 < int(separated_hours[1]) < 60:
         return False
     total_hour = ""
     total_hour += hours
@@ -90,4 +103,19 @@ def calculate_total_hours(start_hour, exit_hour):
         return round(((24 * 3600) - total_start_seconds + total_exit_seconds) / 3600, 1)
 
 
+def calculate_current_day(user_data):
+    day_list = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    number_of_day = user_data["work_days"]["number_of_day"]
+    day_name = day_list[number_of_day]
+
+    return day_name
+
+
+def check_if_float_number(number):
+    try:
+        float(number)
+        return round(number, 2)
+    except ValueError:
+        return False
 

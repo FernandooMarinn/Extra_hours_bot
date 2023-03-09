@@ -308,15 +308,22 @@ def calculate_end_of_the_month(message):
         usual_end_hour = database.get_usual_hour(telegram_id, "finish_hour")
 
         free_days = database.get_work_days(telegram_id)
+
         day_pattern = Functionalities.free_days_pattern(free_days)
-
-        total_days = Functionalities.end_month_add_extra_hours_to_days(days,
+        print(days)
+        #  Aqui debe ir la funcion para introducir los dias que no tienen horas, y no se trabajan.
+        whole_month_days = Functionalities.add_all_days(days, day_pattern, usual_start_hour, usual_end_hour)
+        print(whole_month_days)
+        total_days = Functionalities.end_month_add_extra_hours_to_days(whole_month_days,
                                                                        [usual_start_hour, usual_end_hour], day_pattern)
-
+        print(total_days)
         money_per_hour = database.get_money_per_hour(telegram_id)
         message = Functionalities.create_message_end_of_the_month(total_days, money_per_hour)
 
         bot.send_message(telegram_id, message, parse_mode='html')
+
+        simplified_message = Functionalities.create_simplified_message(total_days, money_per_hour)
+        bot.send_message(telegram_id, simplified_message, parse_mode='html')
 
 
 #  This reacts to the rest of the messages that are not supported above. Tell the user to use its commands.

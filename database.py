@@ -62,7 +62,6 @@ def introduce_working_days_to_database(telegram_id, user: dict):
 
 
 def delete_user(telegram_id):
-    print(telegram_id)
     connection = sqlite3.connect("database/users.db")
     cursor = connection.cursor()
     cursor.execute("DELETE FROM users WHERE telegram_id = ?", (telegram_id,))
@@ -96,13 +95,8 @@ def check_and_return_daily_user(telegram_id):
     connection.close()
 
     if result is None:
-        print("No ha encontrado nada en la base de datos")
         return False
     else:
-        print("Ha encontrado algo en la base de datos.")
-        print(result)
-        print(result[0])
-        print(result[1])
         payment_per_hour = result[1]
         return payment_per_hour
 

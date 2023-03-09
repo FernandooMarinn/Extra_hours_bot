@@ -95,7 +95,9 @@ def calculate_total_hours(start_hour, exit_hour):
     if type(start_hour) == tuple:
         start_hour = start_hour[0]
         exit_hour = exit_hour[0]
-
+    #  For end of month functions
+    if start_hour is None:
+        return 0
     start_hour = start_hour.split(":")
 
     total_start_seconds = int(start_hour[0]) * 3600 + int(start_hour[1]) * 60
@@ -143,7 +145,6 @@ def recieve_current_hour():
     :return:
     """
     current_hour = datetime.datetime.now().strftime("%H:%M")
-    print(current_hour)
     return current_hour
 
 
@@ -191,7 +192,10 @@ def end_month_add_extra_hours_to_days(total_days, usual_hours, free_days_pattern
         if free_days_pattern[week_day]:
             extra_hours = round(calculate_total_hours(day[2], day[3]) - usual_hours_difference, 1)
         else:
-            extra_hours = round(calculate_total_hours(day[2], day[3]), 1)
+            if day[2] is None:
+                extra_hours = 0
+            else:
+                extra_hours = round(calculate_total_hours(day[2], day[3]), 1)
         total_extra_hours += extra_hours
         days_with_extra_hours.append([day[0], day[1], day[2], day[3], extra_hours])
 
@@ -202,7 +206,6 @@ def end_month_add_extra_hours_to_days(total_days, usual_hours, free_days_pattern
 
 
 def calculate_what_day_is(day):
-    print(day)
     date = datetime.datetime.strptime(day, '%d-%m-%Y')
     week_day = date.strftime('%A')
     return week_day
@@ -228,10 +231,93 @@ def create_message_end_of_the_month(total_days, money_per_hour):
     total_days.pop()
     message = ""
     for day in total_days:
-        message += "-{}, {} you worked from {} to {}, making a total of <b>{} extra hours</b> \n\n".format(
-            day[1], calculate_what_day_is(day[1]), day[2], day[3], day[4]
-        )
+        if day[2] is None:
+            message += "-{}, {} was your day off.\n\n".format(day[1], calculate_what_day_is(day[1]))
+        else:
+            message += "-{}, {} you worked from {} to {}, making a total of <b>{} extra hours</b> \n\n".format(
+                day[1], calculate_what_day_is(day[1]), day[2], day[3], day[4])
     total_money = round(total_extra_hours * money_per_hour[0], 2)
     message += "\n\n Total extra hours are {}. Making a total of {}€".format(total_extra_hours, total_money)
 
     return message
+
+
+def change_days_to_number(day):
+    split_days = day.split("-")
+    only_day = split_days[0]
+    return int(only_day)
+
+
+def create_simplified_message(total_days, money_per_hour):
+    total_days.pop()
+    total_counter = 0
+    half_hour_counter = 0
+    message = ""
+    for day in total_days:
+        day_number = change_days_to_number(day[1])
+        extra_hours = calculate_half_hours(half_hour_counter, day_number, day[4], day[2])
+        message += extra_hours[0]
+        half_hour_counter = extra_hours[1]
+        total_counter += extra_hours[2]
+
+    message += "\nTotal = {} hours.\nTotal money = {}€.\n {} minutes not added to the extra hours."\
+               .format(total_counter, money_per_hour[0] * total_counter, round(half_hour_counter * 60, 1))
+    return message
+
+
+def calculate_half_hours(counter, day, hours, start_hour):
+    if start_hour is None:
+        message = "<b>-Day {}  -----------------\n\n</b>".format(day)
+        complete_hours = 0
+    else:
+        message = ""
+        half_hours = hours // 0.5
+        rest = hours % 0.5
+
+        counter += rest
+        if counter >= 0.5:
+            half_hours += 1
+            counter -= 0.5
+
+        complete_hours = half_hours / 2
+        message += "<b>-Day {} - {} hours.</b>\n\n".format(day, complete_hours)
+    return message, counter, complete_hours
+
+
+def calculate_how_many_days(date_in_the_same_month):
+    date = datetime.datetime.strptime(date_in_the_same_month, "%d-%m-%Y").date()
+
+    last_day = date.replace(month=date.month + 1, day=1) - datetime.timedelta(days=1)
+    month_duration = last_day.day
+    return month_duration
+
+
+def add_all_days(days, free_days, start_hour, finish_hour):
+    first_day = days[0][1]
+    month_duration = calculate_how_many_days(first_day)
+    list_to_return = []
+
+    day_pattern = first_day.split("-")
+    month_and_year = day_pattern[1] + "-" + day_pattern[2]
+
+    id = days[0][0]
+
+    days_list_counter = 0
+    for i in range(1, month_duration + 1):
+        if days_list_counter >= len(days) or change_days_to_number(days[days_list_counter][1]) != i:
+            if i < 10:
+                day = "0{}-".format(i)
+            else:
+                day = "{}-".format(i)
+            complete_day = day + month_and_year
+
+            if free_days[calculate_what_day_is(complete_day)]:
+                list_to_return.append((id, complete_day, start_hour[0], finish_hour[0], None))
+            else:
+                list_to_return.append((id, complete_day, None, None, None))
+        else:
+            list_to_return.append(days[days_list_counter])
+            days_list_counter += 1
+
+    return list_to_return
+

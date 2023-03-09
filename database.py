@@ -5,6 +5,7 @@ import table_creation
 def check_and_create_tables():
     table_creation.table_creation()
 
+
 def introduce_daily_user_to_database(telegram_id, user: dict):
     total_per_hour = user["payment_per_hour"]
     connection = sqlite3.connect("database/daily_users.db")
@@ -36,11 +37,10 @@ def introduce_new_user_to_database(telegram_id, user: dict):
 
         connection.commit()
         connection.close()
+        introduce_working_days_to_database(telegram_id, user)
     except sqlite3.IntegrityError:
         connection.close()
         return False
-
-    introduce_working_days_to_database(telegram_id, user)
 
 
 def introduce_working_days_to_database(telegram_id, user: dict):
@@ -50,11 +50,13 @@ def introduce_working_days_to_database(telegram_id, user: dict):
     cursor = connection.cursor()
 
     cursor.execute("""
-        INSERT INTO working_days(Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)
-        VALUES(?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO working_days(Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday, telegram_id)
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?)
     """, (working_days["Monday"], working_days["Tuesday"], working_days["Wednesday"],
-          working_days["Thursday"], working_days["Friday"], working_days["Saturday"], working_days["Sunday"]))
+          working_days["Thursday"], working_days["Friday"], working_days["Saturday"], working_days["Sunday"],
+          telegram_id))
 
+    connection.commit()
     connection.close()
     return True
 
@@ -66,6 +68,22 @@ def delete_user(telegram_id):
     cursor.execute("DELETE FROM users WHERE telegram_id = ?", (telegram_id,))
     connection.commit()
     connection.close()
+
+
+def check_if_user_exits(telegram_id):
+    sql_instruction = """SELECT * FROM users WHERE telegram_id = ?"""
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (telegram_id,))
+
+    result = cursor.fetchone()
+    connection.commit()
+    connection.close()
+
+    return result
+
 
 def check_and_return_daily_user(telegram_id):
     connection = sqlite3.connect("database/daily_users.db")
@@ -97,3 +115,71 @@ def delete_daily_user(telegram_id):
     #  To know if we deleted anything
     connection.close()
     return cursor.rowcount
+
+
+def check_if_already_exist_in_days(parameter_to_serch, column_name, value):
+    sql_instruction = "SELECT {} FROM days WHERE {} = ?".format(parameter_to_serch, column_name)
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (value,))
+    result = cursor.fetchone()
+
+    return result
+
+
+def introduce_one_to_days(column_name, value):
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    sql_instruction = "INSERT INTO days ({}) VALUES(?)".format(column_name)
+    cursor.execute(sql_instruction, (value,))
+
+    connection.commit()
+    connection.close()
+
+
+def introduce_many_to_days(column_names, values):
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+    sql_values = ",".join(["?" for _ in range(len(values))])
+    sql_names = ",".join([name for name in column_names])
+
+    sql_instruction = "INSERT INTO days ({}) VALUES ({})".format(sql_names, sql_values)
+    cursor.execute(sql_instruction, (tuple(values)))
+
+    connection.commit()
+    connection.close()
+
+
+def update_one_to_days(column_name, value, where_condition_name, where_condition_value):
+    sql_instruction = """
+    UPDATE days
+    SET {} = ?
+    WHERE {} = ?
+    """.format(column_name, where_condition_name)
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (value, where_condition_value))
+    connection.commit()
+    connection.close()
+
+
+def get_usual_hour(telegram_id, hour_to_search):
+    """
+    Returns start or end hour of a certain user in the database.
+    :return:
+    """
+    connection = sqlite3.connect("dabatase/users.db")
+    cursor = connection.cursor()
+
+    sql_instruction = "SELECT {} FROM users WHERE telegram_id = ?".format(hour_to_search)
+    cursor.execute(sql_instruction, (telegram_id,))
+
+    result = cursor.fetchone()
+    connection.commit()
+    connection.close()
+    return result
+

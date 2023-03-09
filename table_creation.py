@@ -29,7 +29,7 @@ def table_creation():
 
         cursor.execute("""
             CREATE TABLE working_days(
-                telegram_id INTEGER,
+                telegram_id INTEGER PRIMARY KEY,
                 Monday INTEGER,
                 Tuesday INTEGER,
                 Wednesday INTEGER,
@@ -43,8 +43,8 @@ def table_creation():
 
         cursor.execute("""
             CREATE TABLE days(
-                telegram_id INTEGER,
-                day TEXT,
+                telegram_id KEY,
+                day TEXT PRIMARY KEY,
                 start_hour TEXT,
                 finish_hour TEXT,
                 extra_hours TEXT,

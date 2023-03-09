@@ -1,3 +1,8 @@
+import datetime
+
+
+
+
 def check_hour(hour):
     if hour == False:
         return False
@@ -63,7 +68,6 @@ def check_one_cifre_hours(hour):
     return total_hour
 
 
-print(check_one_cifre_hours("7:30"))
 
 def wrong_hour_format_text():
     text = "It seems that you have introduced a wrong hour format. Remember:\n\n" \
@@ -115,7 +119,60 @@ def calculate_current_day(user_data):
 def check_if_float_number(number):
     try:
         float(number)
-        return round(number, 2)
+        return round(float(number), 2)
     except ValueError:
         return False
+
+
+def recieve_current_day():
+    """
+    Returns the current day using datetime library.
+    :return:
+    """
+    day = datetime.date.today().strftime("%d-%m-%Y")
+    return day
+
+
+def recieve_current_hour():
+    """
+    Returns the current hour using datetime library.
+    :return:
+    """
+    current_hour = datetime.datetime.now().strftime("%H:%M")
+    print(current_hour)
+    return current_hour
+
+
+def check_if_lower_hour(start_hour: str, end_hour: str):
+    """
+    Return the lower hour between two options.
+    :param start_hour:
+    :param end_hour:
+    :return:
+    """
+    split_start_hour = start_hour.split(":")
+    split_end_hour = end_hour.split(":")
+
+    start_only_hour = int(split_start_hour[0])
+    end_only_hour = int(split_end_hour[0])
+
+    if start_only_hour < end_only_hour:
+        return start_hour
+    elif start_only_hour > end_only_hour:
+        return end_hour
+    else:
+        if split_start_hour[1] < split_end_hour[1]:
+            return start_hour
+        elif split_start_hour[1] > split_end_hour[1]:
+            return end_hour
+        else:
+            return start_hour
+
+
+def get_previous_day():
+    current_day = datetime.datetime.now()
+    previous_day = current_day - datetime.timedelta(days=1)
+
+    return previous_day.strftime("%d-%m-%Y")
+
 

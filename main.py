@@ -1,4 +1,3 @@
-import time
 import database
 from config import bot_token
 import telebot
@@ -196,6 +195,109 @@ def reset_price_per_hour(message):
         bot.reply_to(message, "You don't have an hourly rate! You can't reset it yet!")
 
 
+@bot.message_handler(commands=['edit'])
+def edit(message):
+    bot.send_message(message.chat.id, "This is still under construction, but it will let you edit your work "
+                                      "schedule and extra hours.")
+
+
+
+
+@bot.message_handler(commands=['start_work'])
+def starting_work(message):
+    current_day = Functionalities.recieve_current_day()
+    current_hour = Functionalities.recieve_current_hour()
+
+    check_day = database.check_if_already_exist_in_days("*", "day", current_day)
+    if check_if_user_exist(message.chat.id):
+
+        if check_day is None:
+            database.introduce_many_to_days(["day", "start_hour", "telegram_id"],
+                                            [current_day, current_hour, message.chat.id])
+            bot.send_message(message.chat.id, "Your start hour has been registered!")
+
+        else:
+            check_start_hour = database.check_if_already_exist_in_days("start_hour", "day", current_day)
+
+            if check_start_hour is None:
+                database.update_one_to_days("start_hour", current_hour, "day", current_day)
+                bot.send_message(message.chat.id, "Your start hour has been registered!")
+
+            else:
+                bot.send_message(message.chat.id, "It seems that there is already a starting hour for today.\n"
+                                                  "If you want to change it, please use /edit")
+
+
+@bot.message_handler(commands=['end_work'])
+def end_work(message):
+    #  Get current day and current hour using datetime library
+    current_day = Functionalities.recieve_current_day()
+    current_hour = Functionalities.recieve_current_hour()
+
+    #  Checks if user already exist, and continues only if so.
+    if check_if_user_exist(message.chat.id):
+        #  Check if current day already exist in database.
+        check_day = database.check_if_already_exist_in_days("*", "day", current_day)
+
+        if check_day is None:
+            #  If does not exist yet there isn't a start hour, so it gets the usual start hour from the user database.
+
+            user_start_hour = database.get_usual_hour(message.chat.id, "start_hour")
+            #  It checks if the close hour is bigger than the start hour (same day) or is lower (next day)
+
+            if Functionalities.check_if_lower_hour(current_hour, user_start_hour) == user_start_hour:
+                #  If the lower hour is the start, it updates the database with the finish hour.
+
+                database.introduce_many_to_days(["day", "start_hour", "finish_hour", "telegram_id"],
+                                                [current_day, user_start_hour, current_hour, message.chat.id])
+
+                bot.send_message(message.chat.id, "Your finish hour has been registered!")
+
+            else:
+                #  If the lower hour is the finish one, it means that it happened in another day.
+                end_after_midnight(current_hour, message.chat.id, user_start_hour)
+
+        else:
+            #  If the day already exist, it only updates finish hour in the database.
+            check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", current_day)
+            print(check_finish_hour)
+            if check_finish_hour[0] is None:
+                database.update_one_to_days("finish_hour", current_hour, "day", current_day)
+                bot.send_message(message.chat.id, "Your finish hour has been registered!")
+            else:
+                bot.send_message(message.chat.id, "It seems that there is already a finish hour."
+                                                  " Please use /edit to change it.")
+
+def end_after_midnight(current_hour, telegram_id, user_start_hour):
+    previous_day = Functionalities.get_previous_day()
+    check_day = database.check_if_already_exist_in_days("*", "day", previous_day)
+
+    if check_day is None:
+        database.introduce_many_to_days(["day", "start_hour", "finish_hour", "telegram_id"],
+                                        [previous_day, user_start_hour, current_hour, telegram_id])
+
+    else:
+        check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", previous_day)
+
+        if check_finish_hour is None:
+            database.update_one_to_days("finish_hour", current_hour, "day", previous_day)
+            bot.send_message(telegram_id, "Your start hour has been registered!")
+
+        else:
+            bot.send_message(telegram_id, "It seems that there is already a finish hour."
+                                          " Please use /edit to change it.")
+
+
+
+def check_if_user_exist(id):
+    if database.check_if_user_exits(id) is None:
+        bot.send_message(id, "You haven't created a user yet! Please use /new_user first.")
+        return False
+    else:
+        return True
+
+
+
 #  This reacts to the rest of the messages that are not supported above. Tell the user to use its commands.
 @bot.message_handler(func=lambda x: True)
 def answer_unknown_texts(message):
@@ -328,11 +430,11 @@ def save(telegram_id):
     check_data_saving = database.introduce_new_user_to_database(telegram_id, users[telegram_id])
     print(check_data_saving)
     if check_data_saving == False:
-        database.delete_user(telegram_id)
         notify_error_creating_user(telegram_id)
     else:
         bot.send_message(telegram_id, "Nice {}! You have successfully created your user!"
                          .format(users[telegram_id]["name"]))
+        del users[telegram_id]
 
 
 def notify_error_creating_user(id):
@@ -351,29 +453,13 @@ def delete_or_keep_user(message):
         database.delete_user(message.chat.id)
         database.introduce_new_user_to_database(message.chat.id, users[message.chat.id])
         bot.send_message(message.chat.id, "Nice! I just deleted the old user, and introduced the new one.")
+        del users[message.chat.id]
     else:
         bot.send_message(message.chat.id, "It seems like you introduced a wrong value. I'm sorry, but you have to "
                                           "start again!")
 
 
-""" to do:
-       
-        OJO! Que luego puede ser que lo quieras modificar. No escribas dos veces el mismo codigo.
-        
-        Una vez terminado, eliminar NO EL DICCIONARIO, si no la clave correspondiente
-        
-        ask every user it's weekly days of work. Se puede utilizar un botón para ver si es siempre igual o no.
-        Introduce every day in the data base, related with the working hours
-        Añadir la biblioteca time o datatime para que sea facil para un usuario empezar y acabar un turno.
-        Conectar con algun tipo de biblioteca que automatice los días de la semana(NO EN DB). (Imprimir a final de mes)
-        
-        La conexion a la base de datos tiene que ser lo más rapida posible, para evitar errores (abrir y cerrar)
-        
-        AÑADIR HOURLY_INCOME A USERS
-        
-        
-        
-"""
+
 
 if __name__ == '__main__':
     bot.set_my_commands([

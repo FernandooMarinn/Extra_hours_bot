@@ -92,6 +92,7 @@ def check_and_return_daily_user(telegram_id):
     cursor.execute("SELECT * FROM daily_users WHERE telegram_id = ?", (telegram_id,))
 
     result = cursor.fetchone()
+    connection.commit()
     connection.close()
 
     if result is None:
@@ -117,22 +118,25 @@ def delete_daily_user(telegram_id):
     return cursor.rowcount
 
 
-def check_if_already_exist_in_days(parameter_to_serch, column_name, value):
-    sql_instruction = "SELECT {} FROM days WHERE {} = ?".format(parameter_to_serch, column_name)
+def check_if_already_exist_in_days(parameter_to_serch, column_name, value, telegram_id):
+    sql_instruction = "SELECT {} FROM days WHERE {} = ? AND telegram_id = ?".format(parameter_to_serch, column_name)
     connection = sqlite3.connect("database/users.db")
     cursor = connection.cursor()
 
-    cursor.execute(sql_instruction, (value,))
+    cursor.execute(sql_instruction, (value, telegram_id))
     result = cursor.fetchone()
 
+    connection.commit()
+    connection.close()
     return result
 
 
 def introduce_one_to_days(column_name, value):
+    sql_instruction = "INSERT INTO days ({}) VALUES(?)".format(column_name)
+
     connection = sqlite3.connect("database/users.db")
     cursor = connection.cursor()
 
-    sql_instruction = "INSERT INTO days ({}) VALUES(?)".format(column_name)
     cursor.execute(sql_instruction, (value,))
 
     connection.commit()
@@ -152,17 +156,17 @@ def introduce_many_to_days(column_names, values):
     connection.close()
 
 
-def update_one_to_days(column_name, value, where_condition_name, where_condition_value):
+def update_one_to_days(column_name, value, where_condition_name, where_condition_value, telegram_id):
     sql_instruction = """
     UPDATE days
     SET {} = ?
-    WHERE {} = ?
+    WHERE {} = ? AND telegram_id = ?
     """.format(column_name, where_condition_name)
 
     connection = sqlite3.connect("database/users.db")
     cursor = connection.cursor()
 
-    cursor.execute(sql_instruction, (value, where_condition_value))
+    cursor.execute(sql_instruction, (value, where_condition_value, telegram_id))
     connection.commit()
     connection.close()
 
@@ -172,7 +176,7 @@ def get_usual_hour(telegram_id, hour_to_search):
     Returns start or end hour of a certain user in the database.
     :return:
     """
-    connection = sqlite3.connect("dabatase/users.db")
+    connection = sqlite3.connect("database/users.db")
     cursor = connection.cursor()
 
     sql_instruction = "SELECT {} FROM users WHERE telegram_id = ?".format(hour_to_search)
@@ -183,3 +187,51 @@ def get_usual_hour(telegram_id, hour_to_search):
     connection.close()
     return result
 
+
+def end_month_get_hours(telegram_id):
+    sql_instruction = """
+    SELECT * FROM days WHERE telegram_id = ?
+    """
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (telegram_id,))
+    result = cursor.fetchall()
+
+    connection.commit()
+    connection.close()
+
+    return result
+
+
+def get_work_days(telegram_id):
+    sql_instruction = """
+        SELECT * FROM working_days WHERE telegram_id = ?
+    """
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (telegram_id,))
+    result = cursor.fetchall()
+
+    connection.commit()
+    connection.close()
+
+    return result
+
+
+def get_money_per_hour(telegram_id):
+    sql_instruction = "SELECT payment_per_hour FROM users where telegram_id = {}".format(telegram_id)
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction)
+    result = cursor.fetchone()
+
+    connection.commit()
+    connection.close()
+
+    return result

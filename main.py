@@ -208,7 +208,7 @@ def starting_work(message):
     current_day = Functionalities.recieve_current_day()
     current_hour = Functionalities.recieve_current_hour()
 
-    check_day = database.check_if_already_exist_in_days("*", "day", current_day)
+    check_day = database.check_if_already_exist_in_days("*", "day", current_day, message.chat.id)
     if check_if_user_exist(message.chat.id):
 
         if check_day is None:
@@ -217,10 +217,10 @@ def starting_work(message):
             bot.send_message(message.chat.id, "Your start hour has been registered!")
 
         else:
-            check_start_hour = database.check_if_already_exist_in_days("start_hour", "day", current_day)
+            check_start_hour = database.check_if_already_exist_in_days("start_hour", "day", current_day, message.chat.id)
 
             if check_start_hour is None:
-                database.update_one_to_days("start_hour", current_hour, "day", current_day)
+                database.update_one_to_days("start_hour", current_hour, "day", current_day, message.chat.id)
                 bot.send_message(message.chat.id, "Your start hour has been registered!")
 
             else:
@@ -237,7 +237,7 @@ def end_work(message):
     #  Checks if user already exist, and continues only if so.
     if check_if_user_exist(message.chat.id):
         #  Check if current day already exist in database.
-        check_day = database.check_if_already_exist_in_days("*", "day", current_day)
+        check_day = database.check_if_already_exist_in_days("*", "day", current_day, message.chat.id)
 
         if check_day is None:
             #  If does not exist yet there isn't a start hour, so it gets the usual start hour from the user database.
@@ -246,7 +246,7 @@ def end_work(message):
             #  It checks if the close hour is bigger than the start hour (same day) or is lower (next day)
 
             if Functionalities.check_if_lower_hour(current_hour, user_start_hour) == user_start_hour:
-                #  If the lower hour is the start, it updates the database with the finish hour.
+                #  If the lower hour is the start, it introduce it to the database with the finish hour.
 
                 database.introduce_many_to_days(["day", "start_hour", "finish_hour", "telegram_id"],
                                                 [current_day, user_start_hour, current_hour, message.chat.id])
@@ -259,28 +259,29 @@ def end_work(message):
 
         else:
             #  If the day already exist, it only updates finish hour in the database.
-            check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", current_day)
-            print(check_finish_hour)
+            check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day",
+                                                                        current_day, message.chat.id)
             if check_finish_hour[0] is None:
-                database.update_one_to_days("finish_hour", current_hour, "day", current_day)
+                database.update_one_to_days("finish_hour", current_hour, "day", current_day, message.chat.id)
                 bot.send_message(message.chat.id, "Your finish hour has been registered!")
             else:
                 bot.send_message(message.chat.id, "It seems that there is already a finish hour."
                                                   " Please use /edit to change it.")
 
+
 def end_after_midnight(current_hour, telegram_id, user_start_hour):
     previous_day = Functionalities.get_previous_day()
-    check_day = database.check_if_already_exist_in_days("*", "day", previous_day)
+    check_day = database.check_if_already_exist_in_days("*", "day", previous_day, telegram_id)
 
     if check_day is None:
         database.introduce_many_to_days(["day", "start_hour", "finish_hour", "telegram_id"],
                                         [previous_day, user_start_hour, current_hour, telegram_id])
 
     else:
-        check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", previous_day)
+        check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", previous_day, telegram_id)
 
         if check_finish_hour is None:
-            database.update_one_to_days("finish_hour", current_hour, "day", previous_day)
+            database.update_one_to_days("finish_hour", current_hour, "day", previous_day, telegram_id)
             bot.send_message(telegram_id, "Your start hour has been registered!")
 
         else:
@@ -291,11 +292,31 @@ def end_after_midnight(current_hour, telegram_id, user_start_hour):
 
 def check_if_user_exist(id):
     if database.check_if_user_exits(id) is None:
-        bot.send_message(id, "You haven't created a user yet! Please use /new_user first.")
+        bot.send_message(id, "You haven't created an user yet! Please use /new_user first.")
         return False
     else:
         return True
 
+
+@bot.message_handler(commands=['end_month'])
+def calculate_end_of_the_month(message):
+    if check_if_user_exist(message.chat.id):
+        telegram_id = message.chat.id
+        days = database.end_month_get_hours(telegram_id)
+
+        usual_start_hour = database.get_usual_hour(telegram_id, "start_hour")
+        usual_end_hour = database.get_usual_hour(telegram_id, "finish_hour")
+
+        free_days = database.get_work_days(telegram_id)
+        day_pattern = Functionalities.free_days_pattern(free_days)
+
+        total_days = Functionalities.end_month_add_extra_hours_to_days(days,
+                                                                       [usual_start_hour, usual_end_hour], day_pattern)
+
+        money_per_hour = database.get_money_per_hour(telegram_id)
+        message = Functionalities.create_message_end_of_the_month(total_days, money_per_hour)
+
+        bot.send_message(telegram_id, message, parse_mode='html')
 
 
 #  This reacts to the rest of the messages that are not supported above. Tell the user to use its commands.
@@ -364,99 +385,130 @@ def ask_finishing_hour(message):
 
 def final_time_question(message):
     hour = Functionalities.check_o_clock_hours(message.text)
+    #  If the message does not contain a valid hour format, it sends an error message.
     if not Functionalities.check_hour(hour):
         error_text = Functionalities.wrong_hour_format_text()
         bot.reply_to(message, error_text, parse_mode="html")
     else:
-
+        #  Otherwise, it stored it in the global variable.
         users[message.chat.id]["finish_hour"] = hour
 
         bot.send_chat_action(message.chat.id, "typing")
 
     markup = ForceReply()
+    #  Ask how much are the user paid by hour.
     hourly_income = bot.send_message(message.chat.id, "How much are you paid per hour?", reply_markup=markup)
-
+    #  Continues in ask_money_per_hour
     bot.register_next_step_handler(hourly_income, ask_money_per_hour)
 
 
 def ask_money_per_hour(message):
     hourly_income = message.text
     if not Functionalities.check_if_float_number(hourly_income):
+        #  If the message is not a number (integer or float) sends an error message and deletes the variable.
         bot.send_message(message.chat.id, "You haven't entered a number! Please try again.")
+        del users[message.chat.id]
     else:
+        #  Store the value in the global variable.
         users[message.chat.id]["payment_per_hour"] = hourly_income
-
+        #  Ask about work days.
         bot.send_message(message.chat.id, "Good! Now some questions about your work days.")
-
+        #  Creates a diccionary with every day of the week, and a counter (0 = Monday, 6 = Sunday)
         work_days = {"Monday": None, "Tuesday": None, "Wednesday": None, "Thursday": None, "Friday": None,
                      "Saturday": None, "Sunday": None, "number_of_day": 0}
+        #  Store the diccionary in the user variable.
         users[message.chat.id]["work_days"] = work_days
-
+        #  Continues in ask_working_days
         ask_working_days(message)
 
 
 def ask_working_days(message):
+    #  Get the string of the day that is currently asking
     current_day = Functionalities.calculate_current_day(users[message.chat.id])
     bot.send_chat_action(message.chat.id, "typing")
 
+    #  Show two buttons, yes or no, and let the user choose.
     markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="Press a button.")
     markup.add("yes", "no")
 
+    #  Ask if the user works on the currently asking day.
     answer = bot.send_message(message.chat.id, "Do you work on {}?".format(current_day), reply_markup=markup)
 
+    #  Continues in write_working_day.
     bot.register_next_step_handler(answer, write_working_day)
 
 
 def write_working_day(message):
     current_day = Functionalities.calculate_current_day(users[message.chat.id])
     if message.text.lower() == "yes":
+        #  If user answer is yes, store a 1 in that day in the dictionary (True)
         users[message.chat.id]["work_days"][current_day] = 1
+
     elif message.text.lower() == "no":
+        #  If user answer is yes, store a 0 in that day in the dictionary (False)
         users[message.chat.id]["work_days"][current_day] = 0
+
     else:
+        #  If the input is not correct, sends error message, deletes user variable and returns False.
         bot.send_message(message.chat.id, "You have entered a wrong input! Please try again and use the buttons!")
         del users[message.chat.id]
         return False
 
+    #  While the counter is less than 6, adds 1 and goes again to ask_working_days.
     if users[message.chat.id]["work_days"]["number_of_day"] < 6:
         users[message.chat.id]["work_days"]["number_of_day"] += 1
         ask_working_days(message)
+
     else:
+        #  When days are finished, continues in save.
         save(message.chat.id)
 
 
 def save(telegram_id):
-    print(users[telegram_id])
+    #  It checks if the user already exist and saves it if possible.
     check_data_saving = database.introduce_new_user_to_database(telegram_id, users[telegram_id])
-    print(check_data_saving)
+
     if check_data_saving == False:
+        #  If it already exist, continues in notify_error_creating_user
         notify_error_creating_user(telegram_id)
     else:
+        #  Sends a success message and deletes the variable.
         bot.send_message(telegram_id, "Nice {}! You have successfully created your user!"
                          .format(users[telegram_id]["name"]))
         del users[telegram_id]
 
 
 def notify_error_creating_user(id):
+    #  Ask if the user want to delete the former user and create a new one.
     markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="Introduce your preference")
     markup.add("Keep older user", "Create new one")
+
     check = bot.send_message(id, "Ooops, seems like you are already in my database. Do you want to delete "
                                  "the former user and create a new one?", reply_markup=markup)
 
+    #  Continues in delete_or_keep_user
     bot.register_next_step_handler(check, delete_or_keep_user)
 
 
 def delete_or_keep_user(message):
     if message.text.lower() == "keep older user":
+        #  If user wants to keep the older user, sends a message and deletes its variable.
         bot.send_message(message.chat.id, "Perfect! You will keep your current profile.")
+        del users[message.chat.id]
+
     elif message.text.lower() == "create new one":
+        #  Deletes older user from the database, insert the new one, sends a message and deletes variable.
         database.delete_user(message.chat.id)
         database.introduce_new_user_to_database(message.chat.id, users[message.chat.id])
         bot.send_message(message.chat.id, "Nice! I just deleted the old user, and introduced the new one.")
         del users[message.chat.id]
+
     else:
+        #  If the answer is different, ask to start again and deletes the variable.
         bot.send_message(message.chat.id, "It seems like you introduced a wrong value. I'm sorry, but you have to "
                                           "start again!")
+        del users[message.chat.id]
+
 
 
 

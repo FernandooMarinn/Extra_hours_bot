@@ -92,6 +92,10 @@ def calculate_total_day_payment(user: dict):
 
 
 def calculate_total_hours(start_hour, exit_hour):
+    if type(start_hour) == tuple:
+        start_hour = start_hour[0]
+        exit_hour = exit_hour[0]
+
     start_hour = start_hour.split(":")
 
     total_start_seconds = int(start_hour[0]) * 3600 + int(start_hour[1]) * 60
@@ -176,3 +180,58 @@ def get_previous_day():
     return previous_day.strftime("%d-%m-%Y")
 
 
+def end_month_add_extra_hours_to_days(total_days, usual_hours, free_days_pattern):
+    days_with_extra_hours = []
+    total_extra_hours = 0
+
+    usual_hours_difference = calculate_total_hours(usual_hours[0], usual_hours[1])
+
+    for day in total_days:
+        week_day = calculate_what_day_is(day[1])
+        if free_days_pattern[week_day]:
+            extra_hours = round(calculate_total_hours(day[2], day[3]) - usual_hours_difference, 1)
+        else:
+            extra_hours = round(calculate_total_hours(day[2], day[3]), 1)
+        total_extra_hours += extra_hours
+        days_with_extra_hours.append([day[0], day[1], day[2], day[3], extra_hours])
+
+    total_extra_hours = round(total_extra_hours, 1)
+    days_with_extra_hours.append({"total_extra_hours": total_extra_hours})
+
+    return days_with_extra_hours
+
+
+def calculate_what_day_is(day):
+    print(day)
+    date = datetime.datetime.strptime(day, '%d-%m-%Y')
+    week_day = date.strftime('%A')
+    return week_day
+
+
+def free_days_pattern(free_days):
+    day_list = list(free_days[0])
+    day_list.remove(free_days[0][0])
+
+    day_dictionary = {"Monday": False, "Tuesday": False, "Wednesday": False, "Thursday": False,
+                      "Friday": False, "Saturday": False, "Sunday": False}
+    for i, day in enumerate(day_dictionary):
+        if day_list[i] == 1:
+            day_dictionary[day] = True
+
+    return day_dictionary
+
+
+def create_message_end_of_the_month(total_days, money_per_hour):
+    total_extra_hours = total_days[-1]
+    total_extra_hours = total_extra_hours['total_extra_hours']
+
+    total_days.pop()
+    message = ""
+    for day in total_days:
+        message += "-{}, {} you worked from {} to {}, making a total of <b>{} extra hours</b> \n\n".format(
+            day[1], calculate_what_day_is(day[1]), day[2], day[3], day[4]
+        )
+    total_money = round(total_extra_hours * money_per_hour[0], 2)
+    message += "\n\n Total extra hours are {}. Making a total of {}€".format(total_extra_hours, total_money)
+
+    return message

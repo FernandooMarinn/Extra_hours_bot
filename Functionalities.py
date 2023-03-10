@@ -94,6 +94,7 @@ def calculate_total_day_payment(user: dict):
 def calculate_total_hours(start_hour, exit_hour):
     if type(start_hour) == tuple:
         start_hour = start_hour[0]
+    if type(exit_hour) == tuple:
         exit_hour = exit_hour[0]
     #  For end of month functions
     if start_hour is None:
@@ -101,8 +102,11 @@ def calculate_total_hours(start_hour, exit_hour):
     start_hour = start_hour.split(":")
 
     total_start_seconds = int(start_hour[0]) * 3600 + int(start_hour[1]) * 60
-
-    exit_hour = exit_hour.split(":")
+    print(exit_hour)
+    if exit_hour is None:
+        return 0
+    else:
+        exit_hour = exit_hour.split(":")
 
     total_exit_seconds = int(exit_hour[0]) * 3600 + int(exit_hour[1]) * 60
 
@@ -293,17 +297,23 @@ def calculate_how_many_days(date_in_the_same_month):
 
 
 def add_all_days(days, free_days, start_hour, finish_hour):
+    #  Takes the first day from the tuple.
     first_day = days[0][1]
+    #  Calculates month duration for that specific day and month.
     month_duration = calculate_how_many_days(first_day)
+    #  Creates an empty list to be returned
     list_to_return = []
-
+    #  Breaks the day string in three pieces: "03" + "12" + "1997"
     day_pattern = first_day.split("-")
+    #  Saves month and year, in a correct format: "12-1997"
     month_and_year = day_pattern[1] + "-" + day_pattern[2]
-
+    #  Gets the telegram id from the first day.
     id = days[0][0]
-
+    #  Creates a counter, for days without registries.
     days_list_counter = 0
+    #  Iterates over every day of the month.
     for i in range(1, month_duration + 1):
+        #  If the given day is not in days list, it adds it automatically.
         if days_list_counter >= len(days) or change_days_to_number(days[days_list_counter][1]) != i:
             if i < 10:
                 day = "0{}-".format(i)
@@ -316,8 +326,22 @@ def add_all_days(days, free_days, start_hour, finish_hour):
             else:
                 list_to_return.append((id, complete_day, None, None, None))
         else:
-            list_to_return.append(days[days_list_counter])
+            complete_day = complete_days(days[days_list_counter], start_hour, finish_hour)
+            list_to_return.append(complete_day)
             days_list_counter += 1
 
     return list_to_return
 
+
+def complete_days(day, start_hour, finish_hour):
+    if type(start_hour) == tuple:
+        start_hour = start_hour[0]
+    if type(finish_hour) == tuple:
+        finish_hour = finish_hour[0]
+
+    if day[2] is None and day[3] is not None:
+        return tuple([day[0], day[1], start_hour, day[3], day[4]])
+    elif day[3] is None and day[2] is not None:
+        return tuple([day[0], day[1], day[2], finish_hour, day[4]])
+    else:
+        return day

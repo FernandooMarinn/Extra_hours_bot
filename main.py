@@ -270,27 +270,33 @@ def end_work(message):
 
 
 def end_after_midnight(current_hour, telegram_id, user_start_hour):
+    #  Uses the current day information to calculate the previous day.
     previous_day = Functionalities.get_previous_day()
+    #  Checks if the previous day exist in the database.
     check_day = database.check_if_already_exist_in_days("*", "day", previous_day, telegram_id)
 
     if check_day is None:
+        #  If doesn't exist, it introduces the values to the previous day.
         database.introduce_many_to_days(["day", "start_hour", "finish_hour", "telegram_id"],
                                         [previous_day, user_start_hour, current_hour, telegram_id])
 
     else:
         check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", previous_day, telegram_id)
-
+        #  If it does exist, checks if there is already a finish hour.
         if check_finish_hour is None:
+            #  If there is no finish hour, updates it with the current hour.
             database.update_one_to_days("finish_hour", current_hour, "day", previous_day, telegram_id)
             bot.send_message(telegram_id, "Your start hour has been registered!")
 
         else:
+            #  If there is a register, sends a message of error.
             bot.send_message(telegram_id, "It seems that there is already a finish hour."
                                           " Please use /edit to change it.")
 
 
 
 def check_if_user_exist(id):
+    #  Check if an user exist in the database, and return True if so, and False if not.
     if database.check_if_user_exits(id) is None:
         bot.send_message(id, "You haven't created an user yet! Please use /new_user first.")
         return False
@@ -303,27 +309,48 @@ def calculate_end_of_the_month(message):
     if check_if_user_exist(message.chat.id):
         telegram_id = message.chat.id
         days = database.end_month_get_hours(telegram_id)
-
-        usual_start_hour = database.get_usual_hour(telegram_id, "start_hour")
-        usual_end_hour = database.get_usual_hour(telegram_id, "finish_hour")
-
-        free_days = database.get_work_days(telegram_id)
-
-        day_pattern = Functionalities.free_days_pattern(free_days)
         print(days)
-        #  Aqui debe ir la funcion para introducir los dias que no tienen horas, y no se trabajan.
-        whole_month_days = Functionalities.add_all_days(days, day_pattern, usual_start_hour, usual_end_hour)
-        print(whole_month_days)
-        total_days = Functionalities.end_month_add_extra_hours_to_days(whole_month_days,
-                                                                       [usual_start_hour, usual_end_hour], day_pattern)
-        print(total_days)
-        money_per_hour = database.get_money_per_hour(telegram_id)
-        message = Functionalities.create_message_end_of_the_month(total_days, money_per_hour)
+        if days == []:
+            bot.send_message(message.chat.id, "There are not hours! Use /help_extra_hours to know how I work!")
+        else:
+            #  It gets start and finish hour from the database.
+            usual_start_hour = database.get_usual_hour(telegram_id, "start_hour")
+            usual_end_hour = database.get_usual_hour(telegram_id, "finish_hour")
+            #  Gets also the free days from database.
+            free_days = database.get_work_days(telegram_id)
+            #  Calculates free days pattern, with True when the user works, and False when not.
+            day_pattern = Functionalities.free_days_pattern(free_days)
 
-        bot.send_message(telegram_id, message, parse_mode='html')
+            whole_month_days = Functionalities.add_all_days(days, day_pattern, usual_start_hour, usual_end_hour)
 
-        simplified_message = Functionalities.create_simplified_message(total_days, money_per_hour)
-        bot.send_message(telegram_id, simplified_message, parse_mode='html')
+            total_days = Functionalities.end_month_add_extra_hours_to_days(whole_month_days,
+                                                                           [usual_start_hour, usual_end_hour], day_pattern)
+
+            money_per_hour = database.get_money_per_hour(telegram_id)
+            message = Functionalities.create_message_end_of_the_month(total_days, money_per_hour)
+
+            bot.send_message(telegram_id, message, parse_mode='html')
+
+            simplified_message = Functionalities.create_simplified_message(total_days, money_per_hour)
+            bot.send_message(telegram_id, simplified_message, parse_mode='html')
+
+
+#  This reacts to the command /help_extra_hours and send a little explanation about it's functionalities.
+@bot.message_handler(commands=['help_extra_hours'])
+def help_extra_hours(message):
+    message_to_send = """
+-First, you have to create a new user (If you don't have it!). I will ask you some questions about your job.
+
+-After that, you can use my commands /start_work and /end_work one you enter or exit your job. The hour 
+when I receive your message will be saved in your database. I you don't send me any message, I will suppose
+that you are entering/leaving in time.
+
+-When you want to calculate your current hours, or the month is finishing, use /end_month command and I will send
+you all the info in my database, in two ordered messages. One of them with all the information, and another one 
+simplified, so it is easier to understand.
+    """
+
+    bot.send_message(message.chat.id, message_to_send)
 
 
 #  This reacts to the rest of the messages that are not supported above. Tell the user to use its commands.
@@ -523,6 +550,9 @@ def delete_or_keep_user(message):
 if __name__ == '__main__':
     bot.set_my_commands([
         telebot.types.BotCommand("/help", "Show functions to use with the bot."),
+        telebot.types.BotCommand("/start_work", "For start your day of work"),
+        telebot.types.BotCommand("/end_work", "For finish your day of work"),
+        telebot.types.BotCommand("/end_month", "End month and print out the hours."),
         telebot.types.BotCommand("/new_user", "Create a new profile."),
         telebot.types.BotCommand("/check_valid_hour", "Check if an hour format is correct to use it with the bot."),
         telebot.types.BotCommand("/calculate_daily_payment", "For cheking your daily income, depending on hours."),

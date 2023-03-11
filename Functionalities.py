@@ -102,7 +102,6 @@ def calculate_total_hours(start_hour, exit_hour):
     start_hour = start_hour.split(":")
 
     total_start_seconds = int(start_hour[0]) * 3600 + int(start_hour[1]) * 60
-    print(exit_hour)
     if exit_hour is None:
         return 0
     else:
@@ -135,21 +134,24 @@ def check_if_float_number(number):
 
 
 def recieve_current_day():
-    """
-    Returns the current day using datetime library.
-    :return:
-    """
-    day = datetime.date.today().strftime("%d-%m-%Y")
-    return day
+    current_time = datetime.datetime.now()
+    current_hour = datetime.datetime.strptime(recieve_current_hour(), "%H:%M").time()
+    if current_hour >= datetime.time(hour=23):
+        next_day = current_time + datetime.timedelta(days=1)
+        return next_day.strftime("%d-%m-%Y")
+    else:
+        return current_time.strftime("%d-%m-%Y")
+
 
 
 def recieve_current_hour():
     """
-    Returns the current hour using datetime library.
+    Returns the current hour plus one hour using datetime library.
     :return:
     """
-    current_hour = datetime.datetime.now().strftime("%H:%M")
-    return current_hour
+    current_hour = datetime.datetime.now()
+    current_hour_plus_one = current_hour + datetime.timedelta(hours=1)
+    return current_hour_plus_one.strftime("%H:%M")
 
 
 def check_if_lower_hour(start_hour: str, end_hour: str):
@@ -159,6 +161,10 @@ def check_if_lower_hour(start_hour: str, end_hour: str):
     :param end_hour:
     :return:
     """
+    if type(start_hour) == tuple:
+        start_hour = start_hour[0]
+    if type(end_hour) == tuple:
+        end_hour = end_hour[0]
     split_start_hour = start_hour.split(":")
     split_end_hour = end_hour.split(":")
 

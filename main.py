@@ -242,12 +242,11 @@ def end_work(message):
         if check_day is None:
             #  If does not exist yet there isn't a start hour, so it gets the usual start hour from the user database.
 
-            user_start_hour = database.get_usual_hour(message.chat.id, "start_hour")
+            user_start_hour = database.get_usual_hour(message.chat.id, "start_hour")[0]
             #  It checks if the close hour is bigger than the start hour (same day) or is lower (next day)
 
             if Functionalities.check_if_lower_hour(current_hour, user_start_hour) == user_start_hour:
                 #  If the lower hour is the start, it introduce it to the database with the finish hour.
-
                 database.introduce_many_to_days(["day", "start_hour", "finish_hour", "telegram_id"],
                                                 [current_day, user_start_hour, current_hour, message.chat.id])
 
@@ -320,7 +319,7 @@ def calculate_end_of_the_month(message):
             free_days = database.get_work_days(telegram_id)
             #  Calculates free days pattern, with True when the user works, and False when not.
             day_pattern = Functionalities.free_days_pattern(free_days)
-
+            print(day_pattern)
             whole_month_days = Functionalities.add_all_days(days, day_pattern, usual_start_hour, usual_end_hour)
 
             total_days = Functionalities.end_month_add_extra_hours_to_days(whole_month_days,

@@ -136,11 +136,12 @@ def check_if_float_number(number):
 def recieve_current_day():
     current_time = datetime.datetime.now()
     current_hour = datetime.datetime.strptime(recieve_current_hour(), "%H:%M").time()
-    if current_hour >= datetime.time(hour=23):
+    if current_hour.hour == 0:
         next_day = current_time + datetime.timedelta(days=1)
         return next_day.strftime("%d-%m-%Y")
     else:
         return current_time.strftime("%d-%m-%Y")
+
 
 
 

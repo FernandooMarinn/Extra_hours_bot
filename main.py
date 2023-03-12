@@ -3,7 +3,7 @@ from config import bot_token
 import telebot
 import Functionalities
 
-from telebot.types import ReplyKeyboardMarkup, ForceReply
+from telebot.types import ReplyKeyboardMarkup, ForceReply, ReplyKeyboardRemove
 
 #  Bot instance
 bot = telebot.TeleBot(bot_token)
@@ -45,7 +45,7 @@ Use /reset_price_per_hour if you want me to delete that hourly income of my data
 asks you again your hourly income when you want to calculate another daily payment. I hope you got a rise!
 
 Use /new_user to create a profile in my database. I will ask you your work schedule, and your hourly income.
-I will use it to help you calculate your <b>extra hours!</b>
+I will use it to help you calculate your <b>extra hours!</b> Check /help_extra_hours for more info.
 
 Use /check_valid_hour to check if I can understand a certain format of hour. (I know, I'm a bit special!)
 
@@ -312,7 +312,7 @@ def calculate_end_of_the_month(message):
         if days == []:
             bot.send_message(message.chat.id, "There are not hours! Use /help_extra_hours to know how I work!")
         else:
-            #  It gets start and finish hour from the database.
+            #  It gets start and end hours from the database.
             usual_start_hour = database.get_usual_hour(telegram_id, "start_hour")
             usual_end_hour = database.get_usual_hour(telegram_id, "finish_hour")
             #  Gets also the free days from database.
@@ -332,6 +332,9 @@ def calculate_end_of_the_month(message):
 
             simplified_message = Functionalities.create_simplified_message(total_days, money_per_hour)
             bot.send_message(telegram_id, simplified_message, parse_mode='html')
+
+            finish_month(telegram_id)
+
 
 
 #  This reacts to the command /help_extra_hours and send a little explanation about it's functionalities.
@@ -532,7 +535,12 @@ def delete_or_keep_user(message):
     elif message.text.lower() == "create new one":
         #  Deletes older user from the database, insert the new one, sends a message and deletes variable.
         database.delete_user(message.chat.id)
+        database.delete_work_days(message.chat.id)
+        database.delete_days(message.chat.id)
+
+        database.introduce_working_days_to_database(message.chat.id, users[message.chat.id])
         database.introduce_new_user_to_database(message.chat.id, users[message.chat.id])
+
         bot.send_message(message.chat.id, "Nice! I just deleted the old user, and introduced the new one.")
         del users[message.chat.id]
 
@@ -543,6 +551,43 @@ def delete_or_keep_user(message):
         del users[message.chat.id]
 
 
+def finish_month(telegram_id):
+    markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="This can't be undone!!")
+    markup.add("yes", "no")
+    confirm = bot.send_message(telegram_id, "Do you want to start a new month and delete all the days"
+                                            " from the database?", reply_markup=markup)
+
+
+    bot.register_next_step_handler(confirm, delete_days_confirm)
+
+
+def delete_days_confirm(message):
+    markup = ReplyKeyboardRemove()
+    if message.text.lower() == "no":
+        bot.send_message(message.chat.id, "Ok! Remember to delete the days at the end of the month!", reply_markup=markup)
+    elif message.text.lower() == "yes":
+        markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="This can't be undone!")
+        markup.add("yes", "no")
+        second_confirm = bot.send_message(message.chat.id, "Are you completely sure? This action can not be undone,"
+                                                           " and will delete every day register in the database.",
+                                          reply_markup=markup)
+        bot.register_next_step_handler(second_confirm, final_delete_days)
+    else:
+        bot.send_message(message.chat.id, "It seems that you introduced a wrong value! Please try again.",
+                         reply_markup=markup)
+
+
+def final_delete_days(message):
+    markup = ReplyKeyboardRemove()
+    if message.text.lower() == "yes":
+        database.delete_days(message.chat.id)
+        bot.send_message(message.chat.id, "Days successfully deleted!", reply_markup=markup)
+    elif message.text.lower() == "no":
+        bot.send_message(message.chat.id, "OK! Remember to delete them a the end or start of the month!",
+                         reply_markup=markup)
+    else:
+        bot.send_message(message.chat.id, "It seems that you introduced a wrong value! Please try again.",
+                         reply_markup=markup)
 
 
 

@@ -229,3 +229,30 @@ def get_money_per_hour(telegram_id):
     connection.close()
 
     return result
+
+
+def delete_days(telegram_id):
+    sql_instruction = """
+    DELETE FROM days WHERE telegram_id = ?"""
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (telegram_id,))
+
+    connection.commit()
+    connection.close()
+
+
+def delete_work_days(telegram_id):
+    sql_instruction = """
+        DELETE FROM working_days WHERE telegram_id = ?"""
+
+    connection = sqlite3.connect("database/users.db")
+    cursor = connection.cursor()
+
+    cursor.execute(sql_instruction, (telegram_id,))
+
+    connection.commit()
+    connection.close()
+

@@ -1,5 +1,13 @@
 import sqlite3
 
+
+"""
+Table creation script. If the database is already created, it will leave a it is.
+This will only work the first time that the bot is running in a server/computer, but it
+will be always checked, in case that something went wrong.
+"""
+
+
 def table_creation():
     connection = sqlite3.connect("database/daily_users.db")
     cursor = connection.cursor()

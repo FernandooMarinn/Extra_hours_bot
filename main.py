@@ -201,8 +201,6 @@ def edit(message):
                                       "schedule and extra hours.")
 
 
-
-
 @bot.message_handler(commands=['start_work'])
 def starting_work(message):
     current_day = Functionalities.receive_current_day()
@@ -293,7 +291,6 @@ def end_after_midnight(current_hour, telegram_id, user_start_hour):
                                           " Please use /edit to change it.")
 
 
-
 def check_if_user_exist(id):
     #  Check if an user exist in the database, and return True if so, and False if not.
     if database.check_if_user_exits(id) is None:
@@ -339,7 +336,6 @@ def calculate_end_of_the_month(message):
             bot.send_message(telegram_id, simplified_message, parse_mode='html')
             #  Continues in finish_month.
             finish_month(telegram_id)
-
 
 
 #  This reacts to the command /help_extra_hours and send a little explanation about it's functionalities.

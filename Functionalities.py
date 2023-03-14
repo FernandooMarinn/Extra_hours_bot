@@ -78,7 +78,7 @@ def check_one_cifre_hours(hour):
     if not 0 < int(separated_hours[1]) < 60:
         return False
     #  Corrects format if minutes have only one digit.
-    if separated_hours[1] < 10:
+    if int(separated_hours[1]) < 10:
         separated_hours[1] = "0{}".format(separated_hours[1])
     #  Creates a correct format hour, and return it.
     total_hour = ""

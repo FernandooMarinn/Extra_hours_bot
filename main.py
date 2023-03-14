@@ -205,8 +205,8 @@ def edit(message):
 
 @bot.message_handler(commands=['start_work'])
 def starting_work(message):
-    current_day = Functionalities.recieve_current_day()
-    current_hour = Functionalities.recieve_current_hour()
+    current_day = Functionalities.receive_current_day()
+    current_hour = Functionalities.receive_current_hour()
 
     check_day = database.check_if_already_exist_in_days("*", "day", current_day, message.chat.id)
     if check_if_user_exist(message.chat.id):
@@ -231,8 +231,8 @@ def starting_work(message):
 @bot.message_handler(commands=['end_work'])
 def end_work(message):
     #  Get current day and current hour using datetime library
-    current_day = Functionalities.recieve_current_day()
-    current_hour = Functionalities.recieve_current_hour()
+    current_day = Functionalities.receive_current_day()
+    current_hour = Functionalities.receive_current_hour()
 
     #  Checks if user already exist, and continues only if so.
     if check_if_user_exist(message.chat.id):
@@ -304,11 +304,14 @@ def check_if_user_exist(id):
 
 
 @bot.message_handler(commands=['end_month'])
+#  Reacts to the command /end_month, and calculate total extra hours, and send two messages with all the information.
 def calculate_end_of_the_month(message):
+    #  If the user exist
     if check_if_user_exist(message.chat.id):
+        #  It saves the telegram id and the total days registries of the month.
         telegram_id = message.chat.id
         days = database.end_month_get_hours(telegram_id)
-        print(days)
+        #  If there are no registries, send an error message.
         if days == []:
             bot.send_message(message.chat.id, "There are not hours! Use /help_extra_hours to know how I work!")
         else:
@@ -319,20 +322,22 @@ def calculate_end_of_the_month(message):
             free_days = database.get_work_days(telegram_id)
             #  Calculates free days pattern, with True when the user works, and False when not.
             day_pattern = Functionalities.free_days_pattern(free_days)
-            print(day_pattern)
+            #  Calculates the days that have no registry, and adds them to the others that have it.
             whole_month_days = Functionalities.add_all_days(days, day_pattern, usual_start_hour, usual_end_hour)
-
+            #  Calculates total extra hours.
             total_days = Functionalities.end_month_add_extra_hours_to_days(whole_month_days,
                                                                            [usual_start_hour, usual_end_hour], day_pattern)
-
+            #  Gets the total hourly payment from the database.
             money_per_hour = database.get_money_per_hour(telegram_id)
-            message = Functionalities.create_message_end_of_the_month(total_days, money_per_hour)
-
-            bot.send_message(telegram_id, message, parse_mode='html')
-
+            #  Creates a long message, with html format.
+            complete_message = Functionalities.create_message_end_of_the_month(total_days, money_per_hour)
+            #  Sends it.
+            bot.send_message(telegram_id, complete_message, parse_mode='html')
+            #  Creates a simplified message, with the same information, and rounded hours.
             simplified_message = Functionalities.create_simplified_message(total_days, money_per_hour)
+            #  Sends it.
             bot.send_message(telegram_id, simplified_message, parse_mode='html')
-
+            #  Continues in finish_month.
             finish_month(telegram_id)
 
 
@@ -552,36 +557,42 @@ def delete_or_keep_user(message):
 
 
 def finish_month(telegram_id):
+    #  Ask if user wants to delete all days registries, and start a new month.
     markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="This can't be undone!!")
     markup.add("yes", "no")
     confirm = bot.send_message(telegram_id, "Do you want to start a new month and delete all the days"
                                             " from the database?", reply_markup=markup)
-
-
+    #  Makes a double confirmation in delete_days_confirm.
     bot.register_next_step_handler(confirm, delete_days_confirm)
 
 
 def delete_days_confirm(message):
     markup = ReplyKeyboardRemove()
+    #  If answer is no, sends a message.
     if message.text.lower() == "no":
         bot.send_message(message.chat.id, "Ok! Remember to delete the days at the end of the month!", reply_markup=markup)
+    #  If is yes, makes a double confirm.
     elif message.text.lower() == "yes":
         markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="This can't be undone!")
         markup.add("yes", "no")
         second_confirm = bot.send_message(message.chat.id, "Are you completely sure? This action can not be undone,"
                                                            " and will delete every day register in the database.",
                                           reply_markup=markup)
+        #  Continues in final_delete_days.
         bot.register_next_step_handler(second_confirm, final_delete_days)
     else:
+        #  If the answer isn't correct, sends an error message.
         bot.send_message(message.chat.id, "It seems that you introduced a wrong value! Please try again.",
                          reply_markup=markup)
 
 
 def final_delete_days(message):
     markup = ReplyKeyboardRemove()
+    #  If the answer is yes, delete every register in days, and sends a message.
     if message.text.lower() == "yes":
         database.delete_days(message.chat.id)
         bot.send_message(message.chat.id, "Days successfully deleted!", reply_markup=markup)
+    #  If is no, remember the user to do it at the end of the month.
     elif message.text.lower() == "no":
         bot.send_message(message.chat.id, "OK! Remember to delete them a the end or start of the month!",
                          reply_markup=markup)
@@ -590,7 +601,7 @@ def final_delete_days(message):
                          reply_markup=markup)
 
 
-
+#  Register the commands to show to the user, and start bot infinity polling.
 if __name__ == '__main__':
     bot.set_my_commands([
         telebot.types.BotCommand("/help", "Show functions to use with the bot."),

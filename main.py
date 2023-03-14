@@ -51,7 +51,8 @@ Use /check_valid_hour to check if I can understand a certain format of hour. (I 
 
 I'm still under construction, so don't be mad with me if I don´t work correctly!
 
-If you have any questions or want to report a bug, contact my creator on github : <a href="https://github.com/FernandooMarinn">FernandooMarinn</a>
+If you have any questions or want to report a bug, contact my creator on github :
+<a href="https://github.com/FernandooMarinn">FernandooMarinn</a>
     """
     bot.send_message(message.chat.id, help_message, parse_mode="html")
 
@@ -89,7 +90,7 @@ def ask_leaving_time(message):
 
     else:
         markup = ForceReply()
-        #  Try to save the information in a diccionary, with the user id as key. It creates if it doesn't exist.
+        #  Try to save the information in a dictionary, with the user id as key. It creates if it doesn't exist.
         try:
             daily_payment_users[message.chat.id]["arrival_time"] = hour
         except KeyError:
@@ -177,7 +178,7 @@ def audio_doc_video(message):
 @bot.message_handler(content_types=['sticker'])
 def echo_sticker(message):
     sticker_id = message.sticker.file_id
-    bot.reply_to(message, "I'm just supposing this is a cool stiker, and I'm sending it to you twice.")
+    bot.reply_to(message, "I'm just supposing this is a cool sticker, and I'm sending it to you twice.")
     bot.send_sticker(message.chat.id, sticker_id)
     bot.send_sticker(message.chat.id, sticker_id)
 
@@ -323,7 +324,9 @@ def calculate_end_of_the_month(message):
             whole_month_days = Functionalities.add_all_days(days, day_pattern, usual_start_hour, usual_end_hour)
             #  Calculates total extra hours.
             total_days = Functionalities.end_month_add_extra_hours_to_days(whole_month_days,
-                                                                           [usual_start_hour, usual_end_hour], day_pattern)
+                                                                           [usual_start_hour, usual_end_hour],
+                                                                           day_pattern)
+
             #  Gets the total hourly payment from the database.
             money_per_hour = database.get_money_per_hour(telegram_id)
             #  Creates a long message, with html format.
@@ -388,7 +391,7 @@ def ask_starting_hour(message):
     bot.send_message(message.chat.id, "Welcome {}!".format(name))
     bot.send_message(message.chat.id, "Lets continue with a few questions about your job.")
 
-    #  It creates an user diccionary inside our global users diccionary.
+    #  It creates an user dictionary inside our global users dictionary.
     users[message.chat.id] = {"name": name}
 
     #  Sends typing action, and ask start work hour.
@@ -450,10 +453,10 @@ def ask_money_per_hour(message):
         users[message.chat.id]["payment_per_hour"] = hourly_income
         #  Ask about work days.
         bot.send_message(message.chat.id, "Good! Now some questions about your work days.")
-        #  Creates a diccionary with every day of the week, and a counter (0 = Monday, 6 = Sunday)
+        #  Creates a dictionary with every day of the week, and a counter (0 = Monday, 6 = Sunday)
         work_days = {"Monday": None, "Tuesday": None, "Wednesday": None, "Thursday": None, "Friday": None,
                      "Saturday": None, "Sunday": None, "number_of_day": 0}
-        #  Store the diccionary in the user variable.
+        #  Store the dictionary in the user variable.
         users[message.chat.id]["work_days"] = work_days
         #  Continues in ask_working_days
         ask_working_days(message)
@@ -566,7 +569,9 @@ def delete_days_confirm(message):
     markup = ReplyKeyboardRemove()
     #  If answer is no, sends a message.
     if message.text.lower() == "no":
-        bot.send_message(message.chat.id, "Ok! Remember to delete the days at the end of the month!", reply_markup=markup)
+        bot.send_message(message.chat.id, "Ok! Remember to delete the days at the end of the month!",
+                         reply_markup=markup)
+
     #  If is yes, makes a double confirm.
     elif message.text.lower() == "yes":
         markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="This can't be undone!")
@@ -606,7 +611,7 @@ if __name__ == '__main__':
         telebot.types.BotCommand("/end_month", "End month and print out the hours."),
         telebot.types.BotCommand("/new_user", "Create a new profile."),
         telebot.types.BotCommand("/check_valid_hour", "Check if an hour format is correct to use it with the bot."),
-        telebot.types.BotCommand("/calculate_daily_payment", "For cheking your daily income, depending on hours."),
+        telebot.types.BotCommand("/calculate_daily_payment", "For checking your daily income, depending on hours."),
         telebot.types.BotCommand("/reset_price_per_hour", "Ask you again your hourly rate when"
                                                           " using /calculate_daily_payment")
     ])

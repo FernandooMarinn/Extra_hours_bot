@@ -88,7 +88,6 @@ def check_one_cifre_hours(hour):
     return total_hour
 
 
-
 def wrong_hour_format_text():
     #  Returns an error message with html format.
     text = "It seems that you have introduced a wrong hour format. Remember:\n\n" \
@@ -166,17 +165,17 @@ def calculate_current_day(user_data):
     return day_name
 
 
-def check_if_float_number(number):
+def check_if_float_number(number: str):
     """
     Checks if a number is float, and returns it rounded.
     :param number:
     :return:
     """
-    if number.isdecimal():
-        return round(float(number), 2)
-    else:
+    try:
+        number = float(number)
+        return round(number, 2)
+    except ValueError:
         return False
-
 
 def receive_current_day():
     """

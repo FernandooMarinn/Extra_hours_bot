@@ -9,7 +9,7 @@ will be always checked, in case that something went wrong.
 
 
 def table_creation():
-    connection = sqlite3.connect("database/daily_users.db")
+    connection = sqlite3.connect("../database/daily_users.db")
     cursor = connection.cursor()
     try:
         cursor.execute("""
@@ -22,7 +22,7 @@ def table_creation():
         connection.close()
         print("Daily users database successfully created.")
 
-        connection = sqlite3.connect("database/users.db")
+        connection = sqlite3.connect("../database/users.db")
         cursor = connection.cursor()
 
         cursor.execute("""

@@ -1,7 +1,7 @@
-import database
-from config import bot_token
+from database_package import database
+from config.config import bot_token
 import telebot
-import Functionalities
+from Functionalities import Functionalities
 
 from telebot.types import ReplyKeyboardMarkup, ForceReply, ReplyKeyboardRemove
 

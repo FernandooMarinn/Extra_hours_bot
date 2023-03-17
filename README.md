@@ -1,6 +1,7 @@
 # Telegram Extra hours bot
 ## Telegram Extra hours Bot is a Telegram bot that helps you organize your overtime hours at work.
-With this bot, you can calculate how much you will be paid for a day, start and stop your working hours, and keep track of your overtime hours at the end of the month.
+With this bot, you can calculate how much you will be paid for a day, start and stop your working hours,
+and keep track of your overtime hours at the end of the month.
 
 ## Features
 Calculate your pay for a day

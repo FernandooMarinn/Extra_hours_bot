@@ -19,7 +19,7 @@ To use the bot, follow these steps:
 
 Start a chat with the Telegram bot @ExtraHours.
 
-Type /start to begin using the bot.
+Type **/start** to begin using the bot.
 
 Use the **/calculate_daily_payment** command to calculate how much you will be paid for a day.
 
@@ -33,8 +33,8 @@ Use the **/end_month** command to get a summary of your overtime hours and pay f
 
 
 
-License
+## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-Credits
+## Credits
 This Telegram bot was created by FernandooMarinn and is based on the pyTelegramBotAPI library.

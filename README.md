@@ -21,6 +21,8 @@ Start a chat with the Telegram bot @ExtraHours.
 
 Type **/start** to begin using the bot.
 
+Use the **/help** command to recieve a brief tutorial.
+
 Use the **/calculate_daily_payment** command to calculate how much you will be paid for a day.
 
 Use **/new_user** to create an user in the database, and start using the other commands.

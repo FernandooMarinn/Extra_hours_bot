@@ -347,13 +347,23 @@ def help_extra_hours(message):
     message_to_send = """
 -First, you have to create a new user (If you don't have it!). I will ask you some questions about your job.
 
--After that, you can use my commands /start_work and /end_work one you enter or exit your job. The hour 
-when I receive your message will be saved in your database. I you don't send me any message, I will suppose
-that you are entering/leaving in time.
+-After that, you can use my commands:
 
--When you want to calculate your current hours, or the month is finishing, use /end_month command and I will send
-you all the info in my database, in two ordered messages. One of them with all the information, and another one 
-simplified, so it is easier to understand.
+/start_work
+
+/end_work
+
+Do it the moment you enter or exit your job. 
+The time when I receive your message will be saved in my database.
+ 
+I you don't send me any message, I will suppose that you are entering/leaving in time.
+
+-When you want to calculate your current hours, or the month is finishing, use:
+ 
+/finish_month
+
+I will send you all the info in my database, in two messages.
+One of them with all the information, and another one simplified, so it is easier to understand.
     """
 
     bot.send_message(message.chat.id, message_to_send)

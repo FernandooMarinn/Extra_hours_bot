@@ -47,7 +47,7 @@ def check_o_clock_hours(hour):
     if not hour.isdigit():
         return False
     #  If it is an hour o'clock (for example 7) returns it in a valid format for the bot.
-    if 0 < int(hour) < 10 and len(hour) == 1:
+    if -1 < int(hour) < 10 and len(hour) == 1:
         return "0{}:00".format(hour)
     #  The same with 2 digit hours.
     elif int(hour) < 24:
@@ -70,12 +70,12 @@ def check_one_cifre_hours(hour):
     if not separated_hours[0].isdigit() or not separated_hours[1].isdigit():
         return False
     #  Is hour is less than ten, corrects it's format, else return False.
-    if 0 < int(separated_hours[0]) < 10:
+    if -1 < int(separated_hours[0]) < 10:
         hours = "0{}".format(format(separated_hours[0]))
     else:
         return False
     #  If minutes is less than 0 or more than 59, return False.
-    if not 0 < int(separated_hours[1]) < 60:
+    if not -1 < int(separated_hours[1]) < 60:
         return False
     #  Corrects format if minutes have only one digit.
     if int(separated_hours[1]) < 10:

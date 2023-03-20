@@ -301,7 +301,7 @@ def check_if_user_exist(id):
         return True
 
 
-@bot.message_handler(commands=['end_month'])
+@bot.message_handler(commands=['finish_month'])
 #  Reacts to the command /end_month, and calculate total extra hours, and send two messages with all the information.
 def calculate_end_of_the_month(message):
     #  If the user exist
@@ -608,7 +608,7 @@ if __name__ == '__main__':
         telebot.types.BotCommand("/help", "Show functions to use with the bot."),
         telebot.types.BotCommand("/start_work", "For start your day of work"),
         telebot.types.BotCommand("/end_work", "For finish your day of work"),
-        telebot.types.BotCommand("/end_month", "End month and print out the hours."),
+        telebot.types.BotCommand("/finish_month", "End month and print out the hours."),
         telebot.types.BotCommand("/new_user", "Create a new profile."),
         telebot.types.BotCommand("/check_valid_hour", "Check if an hour format is correct to use it with the bot."),
         telebot.types.BotCommand("/calculate_daily_payment", "For checking your daily income, depending on hours."),

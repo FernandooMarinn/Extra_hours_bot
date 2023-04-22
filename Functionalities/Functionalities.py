@@ -540,3 +540,51 @@ def complete_days(day, start_hour, finish_hour):
     #  Else, returns it as it is.
     else:
         return day
+
+
+def check_if_a_date_is_correct(date):
+    try:
+        datetime.datetime.strptime(date, '%d-%m-%Y')
+        return True
+    except ValueError:
+        return False
+
+
+def check_if_a_date_is_previous(date_to_check):
+    current_date = receive_current_day()
+    current_date_object = datetime.datetime.strptime(current_date, "%d-%m-%Y")
+    date_to_check_object = datetime.datetime.strptime(date_to_check, "%d-%m-%Y")
+    return current_date_object <= date_to_check_object
+
+
+def divide_tips(data: dict):
+    message = "This is the total division of the tip:\n\n"
+
+    names = data["names"]
+
+    total_hours = sum([value for value in names.values()])
+    total_money = data["money"]
+
+    for name in names.keys():
+        fraction = names[name] / total_hours
+        person_total = round(fraction * total_money, 2)
+
+        new_person = "The part of <b>{}</b> would be <b>{}€</b>\n\n".format(name, person_total)
+        message += new_person
+
+    return message
+
+
+def check_if_same_month(date1, date2):
+    if date2 == "current":
+        date2 = receive_current_day()
+
+    split_date1 = date1.split("-")
+
+    split_date2 = date2.split("-")
+
+    if split_date1[1] == split_date2[1]:
+        return True
+    else:
+        return False
+

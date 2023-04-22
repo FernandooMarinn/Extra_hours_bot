@@ -177,19 +177,18 @@ def check_if_float_number(number: str):
     except ValueError:
         return False
 
+
 def receive_current_day():
     """
     Returns current day, in a format that the bot can use. IMPORTANT! This is modified to have the server in different
-    timezone. In this case, an hour less.
+    timezone. In this case, two hours less.
     :return:
     """
     current_time = datetime.datetime.now()
-    current_hour = datetime.datetime.strptime(receive_current_hour(), "%H:%M").time()
-    if current_hour.hour == 0:
-        next_day = current_time + datetime.timedelta(days=1)
-        return next_day.strftime("%d-%m-%Y")
-    else:
-        return current_time.strftime("%d-%m-%Y")
+    current_hour_plus_two = current_time + datetime.timedelta(hours=2)
+
+    return current_hour_plus_two.strftime("%d-%m-%Y")
+
 
 
 def receive_current_hour():

@@ -8,10 +8,13 @@ and keep track of your overtime hours at the end of the month.
 
 
 ## Features
-Calculate your pay for a day
-Start and stop your working hours
-Keep track of your overtime hours at the end of the month
-Get a summary of your overtime hours and pay for the month
+-Calculate your pay for a day
+
+-Start and stop your working hours
+
+-Keep track of your overtime hours at the end of the month
+
+-Get a summary of your overtime hours and pay for the month
 
 
 
@@ -35,6 +38,10 @@ Use the **/end_work** command to stop your working hours.
 
 Use the **/end_month** command to get a summary of your overtime hours and pay for the month.
 
+
+## New added functionality!
+Now you can also divide tips between coworkers.
+Use **/divide_tip** to start.
 
 
 ## License

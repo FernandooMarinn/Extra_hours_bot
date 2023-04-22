@@ -70,7 +70,7 @@ def check_one_cifre_hours(hour):
     if not separated_hours[0].isdigit() or not separated_hours[1].isdigit():
         return False
     #  Is hour is less than ten, corrects it's format, else return False.
-    if -1 < int(separated_hours[0]) < 10:
+    if -1 < int(separated_hours[0]) < 10 and len(separated_hours[0]) == 1:
         hours = "0{}".format(format(separated_hours[0]))
     else:
         return False
@@ -78,7 +78,7 @@ def check_one_cifre_hours(hour):
     if not -1 < int(separated_hours[1]) < 60:
         return False
     #  Corrects format if minutes have only one digit.
-    if int(separated_hours[1]) < 10:
+    if int(separated_hours[1]) < 10 and len(separated_hours[1]) == 1:
         separated_hours[1] = "0{}".format(separated_hours[1])
     #  Creates a correct format hour, and return it.
     total_hour = ""
@@ -190,16 +190,15 @@ def receive_current_day():
     return current_hour_plus_two.strftime("%d-%m-%Y")
 
 
-
 def receive_current_hour():
     """
     Returns the current hour plus one hour using datetime library. IMPORTANT! This is modified to have the server in a
-    different timezone. In this case, an hour less.
+    different timezone. In this case, two hours less.
     :return:
     """
     current_hour = datetime.datetime.now()
-    current_hour_plus_one = current_hour + datetime.timedelta(hours=1)
-    return current_hour_plus_one.strftime("%H:%M")
+    current_hour_plus_two = current_hour + datetime.timedelta(hours=2)
+    return current_hour_plus_two.strftime("%H:%M")
 
 
 def check_if_lower_hour(start_hour: str, end_hour: str):
@@ -388,8 +387,6 @@ def create_simplified_message(total_days, money_per_hour):
     :param money_per_hour:
     :return:
     """
-    #  Eliminates last index in total days.
-    total_days.pop()
 
     #  Starts a total counter and half hour counter, at 0.
     total_counter = 0
@@ -473,6 +470,7 @@ def add_all_days(days, free_days, start_hour, finish_hour):
     :param finish_hour:
     :return:
     """
+
     #  Takes the first day from the tuple.
     first_day = days[0][1]
     #  Calculates month duration for that specific day and month.
@@ -491,7 +489,8 @@ def add_all_days(days, free_days, start_hour, finish_hour):
     #  Iterates over every day of the month.
     for i in range(1, month_duration + 1):
         #  If the given day is not in days list, it adds it automatically, with a correct format.
-        if days_list_counter >= len(days) or change_days_to_number(days[days_list_counter][1]) != i:
+        if days_list_counter >= len(days) or change_days_to_number(days[days_list_counter][1]) != i\
+                or not check_if_same_month(first_day, days[days_list_counter][1]):
             if i < 10:
                 day = "0{}-".format(i)
             else:

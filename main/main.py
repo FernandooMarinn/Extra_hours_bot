@@ -1,11 +1,15 @@
-from database_package import database
-from config.config import bot_token
-import telebot
-from Functionalities import Functionalities
+import addpath
 
+addpath.add_path()
+
+import telebot
+from database_package import database
+from config import config
+from Functionalities import Functionalities
 from telebot.types import ReplyKeyboardMarkup, ForceReply, ReplyKeyboardRemove
 
 #  Bot instance
+bot_token = config.bot_token
 bot = telebot.TeleBot(bot_token)
 
 #  Check if database already exist, and create it if not.
@@ -158,7 +162,6 @@ def final_price_per_hour(message):
 #  Reacts to a variety of types of messages.
 @bot.message_handler(content_types=['document', 'audio', 'video', 'photo', 'voice'])
 def audio_doc_video(message):
-
     if message.content_type == 'document':
         bot.reply_to(message, "Uuuhhh, a document. I hope you haven't confused me with your local city council.")
 
@@ -196,32 +199,41 @@ def reset_price_per_hour(message):
         bot.reply_to(message, "You don't have an hourly rate! You can't reset it yet!")
 
 
+#  Edit mode
 @bot.message_handler(commands=['edit'])
 def edit(message):
-    bot.send_message(message.chat.id, "This is still under construction, but it will let you edit your work "
-                                      "schedule and extra hours.")
+    markup = ForceReply()
+    day = bot.send_message(message.chat.id, "What day do you want to edit? (The correct format is: day-month-year )",
+                           reply_markup=markup)
+    bot.register_next_step_handler(day, ask_column_to_modify)
 
 
+#  Reacts to command 'start_work'
 @bot.message_handler(commands=['start_work'])
 def starting_work(message):
+    #  Receives current day and hour.
     current_day = Functionalities.receive_current_day()
     current_hour = Functionalities.receive_current_hour()
 
+    #  Checks is day already exists in database.
     check_day = database.check_if_already_exist_in_days("*", "day", current_day, message.chat.id)
     if check_if_user_exist(message.chat.id):
-
+        #  If doesn't exist, creates a day with the current hour as start_hour.
         if check_day is None:
             database.introduce_many_to_days(["day", "start_hour", "telegram_id"],
                                             [current_day, current_hour, message.chat.id])
             bot.send_message(message.chat.id, "Your start hour has been registered!")
-
+        #  Else, check if there is a start hour in the day.
         else:
-            check_start_hour = database.check_if_already_exist_in_days("start_hour", "day", current_day, message.chat.id)
+            check_start_hour = database.check_if_already_exist_in_days("start_hour", "day", current_day,
+                                                                       message.chat.id)
 
+            #  If the hour doesn't exists, adds it.
             if check_start_hour is None:
                 database.update_one_to_days("start_hour", current_hour, "day", current_day, message.chat.id)
                 bot.send_message(message.chat.id, "Your start hour has been registered!")
 
+            #  Else, sends a message to the user.
             else:
                 bot.send_message(message.chat.id, "It seems that there is already a starting hour for today.\n"
                                                   "If you want to change it, please use /edit")
@@ -280,8 +292,9 @@ def end_after_midnight(current_hour, telegram_id, user_start_hour):
 
     else:
         check_finish_hour = database.check_if_already_exist_in_days("finish_hour", "day", previous_day, telegram_id)
+
         #  If it does exist, checks if there is already a finish hour.
-        if check_finish_hour is None:
+        if check_finish_hour[0] is None:
             #  If there is no finish hour, updates it with the current hour.
             database.update_one_to_days("finish_hour", current_hour, "day", previous_day, telegram_id)
             bot.send_message(telegram_id, "Your start hour has been registered!")
@@ -289,7 +302,7 @@ def end_after_midnight(current_hour, telegram_id, user_start_hour):
         else:
             #  If there is a register, sends a message of error.
             bot.send_message(telegram_id, "It seems that there is already a finish hour."
-                                          " Please use /edit to change it.")
+                                          " You can use /edit to change it.")
 
 
 def check_if_user_exist(id):
@@ -355,11 +368,11 @@ def help_extra_hours(message):
 
 Do it the moment you enter or exit your job. 
 The time when I receive your message will be saved in my database.
- 
+
 I you don't send me any message, I will suppose that you are entering/leaving in time.
 
 -When you want to calculate your current hours, or the month is finishing, use:
- 
+
 /finish_month
 
 I will send you all the info in my database, in two messages.
@@ -367,6 +380,15 @@ One of them with all the information, and another one simplified, so it is easie
     """
 
     bot.send_message(message.chat.id, message_to_send)
+
+
+@bot.message_handler(commands=["divide_tip"])
+def divide_tip(message):
+    #  It ask the user on how many people are to divide the tip
+    markup = ForceReply()
+    people = bot.send_message(message.chat.id, "How many people there are to divide the tip?", reply_markup=markup)
+
+    bot.register_next_step_handler(people, before_ask_names)
 
 
 #  This reacts to the rest of the messages that are not supported above. Tell the user to use its commands.
@@ -392,7 +414,7 @@ def finish_check_valid_hour(message):
         bot.reply_to(message, error_text, parse_mode="html")
 
 
-# ----------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------
 
 
 def ask_starting_hour(message):
@@ -612,6 +634,145 @@ def final_delete_days(message):
                          reply_markup=markup)
 
 
+def ask_column_to_modify(message):
+    #  Creates a temporal dictionary and saves the day in it.
+    users[message.chat.id] = {}
+    if Functionalities.check_if_a_date_is_correct(message.text):
+
+        users[message.chat.id]["day_to_edit"] = message.text
+
+        #  Ask which SQL column do you want to edit, and adds a one time keyboard.
+        markup = ReplyKeyboardMarkup(one_time_keyboard=True, input_field_placeholder="What do you want to edit?")
+        markup.add("Start hour", "Finish hour")
+
+        column_to_edit = bot.send_message(message.chat.id, "What do you want to edit?", reply_markup=markup)
+
+        #  Continues in ask_new_value
+        bot.register_next_step_handler(column_to_edit, ask_new_value)
+    else:
+
+        bot.send_message(message.chat.id, "Your date format is not correct.")
+        del users[message.chat.id]
+
+
+def ask_new_value(message):
+    #  If the message is not in
+    if message.text.lower() != "start hour" and message.text.lower() != "finish hour":
+        bot.send_message(message.chat.id, "You have to choose one of the valid options!")
+        del users[message.chat.id]
+    else:
+        if message.text.lower() == "start hour":
+            users[message.chat.id]["column"] = "start_hour"
+        elif message.text.lower() == "finish hour":
+            users[message.chat.id]["column"] = "finish_hour"
+
+        markup = ForceReply()
+        new_value = bot.send_message(message.chat.id, "What is the new value?", reply_markup=markup)
+
+        bot.register_next_step_handler(new_value, change_value)
+
+
+def change_value(message):
+    new_value = message.text
+    hour_check = Functionalities.check_hour(new_value)
+    if not hour_check:
+        new_value = Functionalities.check_o_clock_hours(new_value)
+    if not Functionalities.check_hour(new_value):
+        bot.send_message(message.chat.id, "It seems it is a wrong hour format. Please try again.")
+        del users[message.chat.id]
+    else:
+        telegram_id = message.chat.id
+        day_to_edit = users[telegram_id]["day_to_edit"]
+        column = users[telegram_id]["column"]
+        new_value = new_value
+        markup = ReplyKeyboardRemove()
+
+        edited = database.edit_day(telegram_id, day_to_edit, column, new_value)
+        if edited == 0:
+            database.introduce_many_to_days(["telegram_id", "day", "{}".format(column)],
+                                            [telegram_id, day_to_edit, new_value])
+            bot.send_message(telegram_id, "That date didn't exist in your database, so it's been created.",
+                             reply_markup=markup)
+        else:
+            bot.send_message(telegram_id, "Nice! Your register has been changed", reply_markup=markup)
+
+        del users[telegram_id]
+
+
+def before_ask_names(message):
+    number = message.text
+    if not number.isdigit():
+        bot.send_message(message.chat.id, "Sorry, that is not a correct number.")
+    elif int(number) > 50:
+        bot.send_message(message.chat.id, "I'm really sorry, but I can't help you with that much people.")
+    else:
+        bot.send_message(message.chat.id, "Ok! Now I'm going to ask you a little bit about them.")
+        users[message.chat.id] = {}
+        users[message.chat.id]["number_of_people"] = int(message.text)
+        users[message.chat.id]["names"] = {}
+
+        ask_names(message)
+
+
+def ask_names(message):
+    if users[message.chat.id]["number_of_people"] == 0:
+        finish_tip(message)
+    else:
+        markup = ForceReply()
+        remaining_number = users[message.chat.id]["number_of_people"]
+        name = bot.send_message(message.chat.id, "What is the name of the person {}?".format(remaining_number),
+                                reply_markup=markup)
+        users[message.chat.id]["number_of_people"] -= 1
+
+        bot.register_next_step_handler(name, ask_days)
+
+
+def ask_days(message):
+    name = message.text
+    users[message.chat.id]["names"][name] = 0
+    users[message.chat.id]["last_name"] = name
+
+    markup = ForceReply()
+
+    days = bot.send_message(message.chat.id, "How many days did {} worked?".format(name), reply_markup=markup)
+
+    bot.register_next_step_handler(days, save_days)
+
+
+def save_days(message):
+    if not message.text.isdigit():
+        bot.send_message(message.chat.id, "Sorry, you didn't introduce a number. Please start again.")
+        del users[message.chat.id]
+    else:
+        last_name = users[message.chat.id]["last_name"]
+        users[message.chat.id]["names"][last_name] = int(message.text)
+
+        ask_names(message)
+
+
+def finish_tip(message):
+    markup = ForceReply()
+    money = bot.send_message(message.chat.id, "Nice! Now tell me how much money do you have to share",
+                             reply_markup=markup)
+
+    bot.register_next_step_handler(money, save_money)
+
+
+def save_money(message):
+    if message.text.isdigit() or Functionalities.check_if_float_number(message.text):
+        users[message.chat.id]["money"] = float(message.text)
+
+        divided_tip = Functionalities.divide_tips(users[message.chat.id])
+        bot.send_message(message.chat.id, divided_tip, parse_mode="html")
+
+        del users[message.chat.id]
+    else:
+
+        bot.send_message(message.chat.id, "It seems that is not a correct number. Please try again")
+
+        finish_tip(message)
+
+
 #  Register the commands to show to the user, and start bot infinity polling.
 if __name__ == '__main__':
     bot.set_my_commands([
@@ -623,7 +784,10 @@ if __name__ == '__main__':
         telebot.types.BotCommand("/check_valid_hour", "Check if an hour format is correct to use it with the bot."),
         telebot.types.BotCommand("/calculate_daily_payment", "For checking your daily income, depending on hours."),
         telebot.types.BotCommand("/reset_price_per_hour", "Ask you again your hourly rate when"
-                                                          " using /calculate_daily_payment")
+                                                          " using /calculate_daily_payment"),
+        telebot.types.BotCommand("/edit", "For editing a registry if it is wrong."),
+        telebot.types.BotCommand("/divide_tip", "If you have to divide the tip with other people, depending on how many"
+                                                "days a person worked.")
     ])
 
     print("\n Working...\n")
